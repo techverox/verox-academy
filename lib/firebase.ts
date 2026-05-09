@@ -1,6 +1,11 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getAuth, Auth } from "firebase/auth";
+import { 
+  initializeFirestore, 
+  getFirestore, 
+  Firestore, 
+  CACHE_SIZE_UNLIMITED
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -11,9 +16,34 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// Singleton pattern for Firebase App
+let app: FirebaseApp;
+if (!getApps().length) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp();
+}
+
+// Singleton pattern for Auth
+const auth: Auth = getAuth(app);
+
+// Singleton pattern for Firestore with SSR and HMR safety
+let db: Firestore;
+
+// Shared settings for stability across environments
+const firestoreSettings = {
+  experimentalForceLongPolling: true, // Bypass gRPC issues in both browser and build environments
+  cacheSizeBytes: CACHE_SIZE_UNLIMITED,
+};
+
+try {
+  db = initializeFirestore(app, firestoreSettings);
+  if (typeof window !== "undefined") {
+    console.log("✅ Firestore initialized with Long Polling");
+  }
+} catch (e) {
+  // If already initialized (common in Next.js dev), get the existing instance
+  db = getFirestore(app);
+}
 
 export { app, auth, db };
