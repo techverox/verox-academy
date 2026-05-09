@@ -130,7 +130,7 @@ export default function DashboardPage() {
                   </div>
 
                   <Link
-                    href={`/learn/viewer?id=${course.courseId}`}
+                    href={`/learn/viewer/?id=${course.courseId}`}
                     className="mt-8 flex items-center justify-center rounded-full bg-zinc-900 py-4 text-sm font-black text-zinc-50 transition-all hover:scale-[1.02] active:scale-95 dark:bg-zinc-50 dark:text-zinc-900 shadow-lg"
                   >
                     Continue Learning
@@ -151,7 +151,7 @@ export default function DashboardPage() {
               You haven&apos;t enrolled in any courses yet. Pick your first course and start building your future.
             </p>
             <Link 
-              href="/courses"
+              href="/courses/"
               className="mt-10 rounded-full bg-zinc-900 px-12 py-4 text-sm font-black text-zinc-50 shadow-xl transition-all hover:scale-105 active:scale-95 dark:bg-zinc-50 dark:text-zinc-900"
             >
               Explore Courses

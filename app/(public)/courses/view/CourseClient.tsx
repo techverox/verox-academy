@@ -22,7 +22,7 @@ function CourseViewContent() {
   useEffect(() => {
     async function fetchData() {
       if (!courseId) {
-        router.push("/courses");
+        router.push("/courses/");
         return;
       }
       
@@ -51,7 +51,7 @@ function CourseViewContent() {
 
   const handleEnroll = async () => {
     if (!user) {
-      router.push("/login");
+      router.push("/login/");
       return;
     }
     if (!courseId) return;
@@ -80,7 +80,7 @@ function CourseViewContent() {
       <div className="flex min-h-screen flex-col items-center justify-center bg-white dark:bg-black text-center px-4">
         <h1 className="text-4xl font-black text-zinc-900 dark:text-zinc-50">Course Not Found</h1>
         <p className="mt-4 text-zinc-500 max-w-md">The course you are looking for might have been removed or the link is broken.</p>
-        <Link href="/courses" className="mt-8 rounded-full bg-zinc-900 px-8 py-3 text-sm font-black text-white dark:bg-white dark:text-black">
+        <Link href="/courses/" className="mt-8 rounded-full bg-zinc-900 px-8 py-3 text-sm font-black text-white dark:bg-white dark:text-black">
           Back to Courses
         </Link>
       </div>
@@ -166,7 +166,7 @@ function CourseViewContent() {
 
               {isEnrolled ? (
                 <Link
-                  href={`/learn/viewer?id=${course.id}`}
+                  href={`/learn/viewer/?id=${course.id}`}
                   className="flex w-full items-center justify-center rounded-full bg-green-500 py-5 text-sm font-black text-white shadow-xl transition-all hover:scale-105 active:scale-95"
                 >
                   Continue Learning →

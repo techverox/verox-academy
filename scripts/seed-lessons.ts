@@ -18,27 +18,27 @@ const lessonTemplates = [
   {
     title: "Introduction",
     duration: "08:30",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ", // Placeholder
+    wistiaMediaId: "26ye7e5z83", // Demo Wistia ID
   },
   {
     title: "Basics & Fundamentals",
     duration: "15:45",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    wistiaMediaId: "26ye7e5z83",
   },
   {
     title: "Intermediate Concepts",
     duration: "25:10",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    wistiaMediaId: "26ye7e5z83",
   },
   {
     title: "Advanced Implementation",
     duration: "35:00",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    wistiaMediaId: "26ye7e5z83",
   },
   {
     title: "Final Capstone Project",
     duration: "45:30",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    wistiaMediaId: "26ye7e5z83",
   },
 ];
 
@@ -68,7 +68,8 @@ const seedLessons = async () => {
           courseId: courseId,
           title: `${template.title} - ${courseTitle}`,
           description: `This lesson covers the ${template.title.toLowerCase()} of ${courseTitle}. Master the concepts through hands-on practice.`,
-          videoUrl: template.videoUrl,
+          videoUrl: "", // Keep empty for backward compatibility if needed, but primary is wistia
+          wistiaMediaId: template.wistiaMediaId,
           duration: template.duration,
           order: i + 1,
           createdAt: serverTimestamp(),

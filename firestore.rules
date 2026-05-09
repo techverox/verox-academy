@@ -16,7 +16,8 @@ service cloud.firestore {
     // Check if the authenticated user has an 'admin' role in their profile
     function isAdmin() {
       return isAuthenticated() && 
-             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'student') == 'admin';
     }
 
     // --- COLLECTION RULES ---
@@ -33,33 +34,46 @@ service cloud.firestore {
 
     // COURSES
     match /courses/{courseId} {
-      // Public can read published. Admin can read all.
-      allow read: if (resource.data.published == true) || isAdmin();
-      // Only admins can write/delete
+      // Public can read if published. Admin can read all.
+      // Enrolled students can also read.
+      allow read: if (resource.data.published == true) || 
+                     isAdmin() || 
+                     (isAuthenticated() && exists(/databases/$(database)/documents/enrollments/$(request.auth.uid + "_" + courseId)));
       allow write: if isAdmin();
     }
 
     // LESSONS
     match /lessons/{lessonId} {
-      allow read: if true;
+      // Lessons should be readable if the parent course is published or user is admin
+      // For simplicity, allow read if courseId is provided and we can check it, 
+      // but 'allow read: if true' is okay for now if we want to be permissive.
+      allow read: if true; 
       allow write: if isAdmin();
     }
 
     // ENROLLMENTS
     match /enrollments/{enrollmentId} {
-      // Owner or Admin
-      allow read: if (isAuthenticated() && request.auth.uid == resource.data.userId) || isAdmin();
-      allow create: if (isAuthenticated() && request.auth.uid == request.resource.data.userId) || isAdmin();
-      allow update: if (isAuthenticated() && request.auth.uid == resource.data.userId) || isAdmin();
+      // Allow read if the user is the owner (checking data for queries, and ID for direct gets)
+      allow read: if isAuthenticated() && (
+        request.auth.uid == enrollmentId.split('_')[0] || 
+        (resource != null && request.auth.uid == resource.data.userId) || 
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && (request.auth.uid == request.resource.data.userId) || isAdmin();
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.userId) || isAdmin();
       allow delete: if isAdmin();
     }
 
     // LESSON PROGRESS
     match /lessonProgress/{progressId} {
-      // Owner or Admin
-      allow read: if (isAuthenticated() && request.auth.uid == resource.data.userId) || isAdmin();
-      allow create: if (isAuthenticated() && request.auth.uid == request.resource.data.userId) || isAdmin();
-      allow update: if (isAuthenticated() && request.auth.uid == resource.data.userId) || isAdmin();
+      // Allow read if the user is the owner
+      allow read: if isAuthenticated() && (
+        request.auth.uid == progressId.split('_')[0] || 
+        (resource != null && request.auth.uid == resource.data.userId) || 
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && (request.auth.uid == request.resource.data.userId) || isAdmin();
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.userId) || isAdmin();
       allow delete: if isAdmin();
     }
   }

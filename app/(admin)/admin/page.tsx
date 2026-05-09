@@ -15,7 +15,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (!authLoading && (!profile || profile.role !== "admin")) {
-      router.replace("/dashboard");
+      router.replace("/dashboard/");
     }
   }, [profile, authLoading, router]);
 
@@ -87,16 +87,36 @@ export default function AdminDashboard() {
         Admin Dashboard
       </div>
 
-      <header>
-        <h2 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-50">Platform Overview</h2>
-        <p className="mt-4 text-xl font-medium text-zinc-500 dark:text-zinc-400">
-          Monitor your academy&apos;s growth and engagement metrics in real-time.
-        </p>
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <h2 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-50">Platform Overview</h2>
+          <p className="mt-4 text-xl font-medium text-zinc-500 dark:text-zinc-400">
+            Monitor your academy&apos;s growth and engagement metrics in real-time.
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.push("/dashboard/")}
+            className="h-12 rounded-full border border-zinc-200 bg-white px-8 text-sm font-black text-zinc-900 transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:bg-black dark:text-zinc-50 shadow-sm"
+          >
+            View Student Dashboard
+          </button>
+          <button
+            onClick={() => router.push("/admin/courses/")}
+            className="h-12 rounded-full bg-zinc-900 px-8 text-sm font-black text-white transition-all hover:scale-105 active:scale-95 dark:bg-white dark:text-black shadow-xl"
+          >
+            Manage All Courses →
+          </button>
+        </div>
       </header>
 
       <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card, i) => (
-          <div key={i} className="group relative overflow-hidden rounded-[2.5rem] border border-zinc-200 bg-white p-10 shadow-sm transition-all hover:shadow-xl dark:border-zinc-800 dark:bg-zinc-950">
+          <div 
+            key={i} 
+            onClick={() => card.label === "Total Courses" && router.push("/admin/courses/")}
+            className={`group relative overflow-hidden rounded-[2.5rem] border border-zinc-200 bg-white p-10 shadow-sm transition-all hover:shadow-xl dark:border-zinc-800 dark:bg-zinc-950 ${card.label === "Total Courses" ? "cursor-pointer" : ""}`}
+          >
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400">{card.label}</p>

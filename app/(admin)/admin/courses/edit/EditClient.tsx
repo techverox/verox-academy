@@ -163,7 +163,7 @@ function EditCourseForm() {
             {saving ? "Saving Changes..." : "Update Course"}
           </button>
           <Link
-            href={`/admin/courses/lessons?id=${courseId}`}
+            href={`/admin/courses/curriculum?id=${courseId}`}
             className="flex-1 flex items-center justify-center rounded-full border border-zinc-200 py-6 text-lg font-black shadow-sm transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-900"
           >
             Manage Curriculum →

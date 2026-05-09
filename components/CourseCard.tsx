@@ -11,7 +11,7 @@ function CourseCardComponent({ course }: CourseCardProps) {
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white transition-all hover:shadow-md dark:border-zinc-800 dark:bg-zinc-950">
       {/* ... (rest of the component) ... */}
-      <Link href={`/courses/view?id=${course.id}`} className="relative aspect-video w-full overflow-hidden">
+      <Link href={`/courses/view/?id=${course.id}`} className="relative aspect-video w-full overflow-hidden">
         <Image
           src={course.thumbnail}
           alt={course.title}
@@ -29,7 +29,7 @@ function CourseCardComponent({ course }: CourseCardProps) {
 
       <div className="flex flex-1 flex-col p-5">
         <div className="flex flex-1 flex-col gap-2">
-          <Link href={`/courses/view?id=${course.id}`}>
+          <Link href={`/courses/view/?id=${course.id}`}>
             <h3 className="text-lg font-bold text-zinc-900 line-clamp-1 hover:text-zinc-600 transition-colors dark:text-zinc-50 dark:hover:text-zinc-300">
               {course.title}
             </h3>
@@ -47,7 +47,7 @@ function CourseCardComponent({ course }: CourseCardProps) {
             </span>
           </div>
           <Link
-            href={`/courses/view?id=${course.id}`}
+            href={`/courses/view/?id=${course.id}`}
             className="rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-50 transition-all hover:bg-zinc-800 active:scale-95 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             View Course

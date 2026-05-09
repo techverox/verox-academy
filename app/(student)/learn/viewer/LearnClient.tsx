@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useCallback } from "react";
 import { getLessonsByCourseId, getCourseById, getUserProgress, markLessonComplete } from "@/lib/firestore";
 import { Lesson, Course } from "@/types/firestore";
 import { useAuth } from "@/context/auth-context";
+import WistiaPlayer from "@/components/WistiaPlayer";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -35,9 +36,10 @@ function LearnViewerContent() {
         ]);
         
         setCourse(courseData);
-        setLessons(lessonsData);
-        if (lessonsData.length > 0) {
-          setActiveLesson(lessonsData[0]);
+        const publishedLessons = lessonsData.filter(l => l.published !== false);
+        setLessons(publishedLessons);
+        if (publishedLessons.length > 0) {
+          setActiveLesson(publishedLessons[0]);
         }
 
         if (user) {
@@ -56,7 +58,7 @@ function LearnViewerContent() {
     }
   }, [courseId, user, authLoading, router]);
 
-  const handleMarkComplete = async () => {
+  const handleMarkComplete = useCallback(async () => {
     if (!user || !activeLesson || !courseId) return;
     
     setMarking(true);
@@ -68,16 +70,8 @@ function LearnViewerContent() {
     } finally {
       setMarking(false);
     }
-  };
+  }, [user, activeLesson, courseId]);
 
-  const getEmbedUrl = (url: string) => {
-    try {
-      const videoId = url.split("v=")[1]?.split("&")[0] || url.split("/").pop();
-      return `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`;
-    } catch {
-      return url;
-    }
-  };
 
   if (loading) {
     return (
@@ -109,14 +103,10 @@ function LearnViewerContent() {
           <div className="mx-auto max-w-6xl">
             <div className="relative aspect-video w-full overflow-hidden bg-zinc-900 md:rounded-b-2xl">
               {activeLesson && (
-                <iframe
-                  className="h-full w-full"
-                  src={getEmbedUrl(activeLesson.videoUrl)}
-                  title={`Video lesson: ${activeLesson.title}`}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  loading="lazy"
+                <WistiaPlayer
+                  mediaId={activeLesson.wistiaMediaId || ""}
+                  title={activeLesson.title}
+                  onComplete={handleMarkComplete}
                 />
               )}
             </div>

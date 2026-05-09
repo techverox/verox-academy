@@ -11,14 +11,18 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const { user, loading: authLoading } = useAuth();
+  const { user, profile, loading: authLoading } = useAuth();
   
   useEffect(() => {
-    // If user is already logged in, redirect to dashboard
-    if (user) {
-      router.push("/dashboard");
+    // If user and profile are loaded, redirect based on role
+    if (user && profile && !authLoading) {
+      if (profile.role === "admin") {
+        router.push("/admin/");
+      } else {
+        router.push("/dashboard/");
+      }
     }
-  }, [user, router]);
+  }, [user, profile, authLoading, router]);
 
   if (authLoading || user) {
     return (
@@ -45,7 +49,7 @@ export default function LoginPage() {
         photoURL: firebaseUser.photoURL,
       });
 
-      router.push("/dashboard");
+      // Redirection is handled by the useEffect based on the user's role profile.
     } catch (err: unknown) {
       console.error(err);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

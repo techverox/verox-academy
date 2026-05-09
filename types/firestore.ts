@@ -29,8 +29,11 @@ export interface Lesson {
   title: string;
   description: string;
   videoUrl: string;
+  wistiaMediaId?: string;
   duration: string; // e.g., "10:30"
   order: number;
+  published: boolean;
+  isPreviewFree: boolean;
   createdAt: any;
 }
 

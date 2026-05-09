@@ -352,8 +352,11 @@ export const adminCreateLesson = async (lessonData: Partial<Lesson>): Promise<st
     title: lessonData.title || "New Lesson",
     description: lessonData.description || "",
     videoUrl: lessonData.videoUrl || "",
+    wistiaMediaId: lessonData.wistiaMediaId || "",
     duration: lessonData.duration || "0:00",
     order: Number(lessonData.order) || 0,
+    published: lessonData.published || false,
+    isPreviewFree: lessonData.isPreviewFree || false,
     createdAt: serverTimestamp(),
   };
 
@@ -382,4 +385,38 @@ export const adminDeleteLesson = async (lessonId: string) => {
   // But let's just delete for now as per usual CMS flow.
   const { deleteDoc } = await import("firebase/firestore");
   await deleteDoc(lessonRef);
+};
+
+/**
+ * CMS: Updates the order of multiple lessons.
+ */
+export const adminUpdateLessonOrder = async (lessons: { id: string; order: number }[]) => {
+  const { writeBatch } = await import("firebase/firestore");
+  const batch = writeBatch(db);
+  
+  lessons.forEach((l) => {
+    const lessonRef = doc(db, "lessons", l.id);
+    batch.update(lessonRef, { order: l.order });
+  });
+  
+  await batch.commit();
+};
+
+/**
+ * CMS: Duplicates a lesson.
+ */
+export const adminDuplicateLesson = async (lesson: Lesson) => {
+  const lessonsRef = collection(db, "lessons");
+  const newLessonRef = doc(lessonsRef);
+  
+  const { id, ...lessonData } = lesson;
+  const newLesson = {
+    ...lessonData,
+    title: `${lesson.title} (Copy)`,
+    createdAt: serverTimestamp(),
+    order: lesson.order + 0.1, // Will be re-indexed if needed
+  };
+  
+  await setDoc(newLessonRef, newLesson);
+  return newLessonRef.id;
 };

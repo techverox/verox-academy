@@ -8,14 +8,19 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
 export default function Navbar() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // Hide global navbar on admin routes to prevent double navbars
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
+
   const navLinks = [
-    { name: "Courses", href: "/courses" },
+    { name: "Courses", href: "/courses/" },
     { name: "Pricing", href: "/#pricing" },
-    ...(user ? [{ name: "Dashboard", href: "/dashboard" }] : []),
+    ...(profile?.role === "admin" ? [{ name: "Admin Dashboard", href: "/admin/" }] : []),
   ];
 
   const isActive = (href: string) => pathname === href;
@@ -64,16 +69,25 @@ export default function Navbar() {
                   >
                     Logout
                   </button>
-                  <Link
-                    href="/dashboard"
-                    className="rounded-full bg-zinc-900 px-6 py-2.5 text-sm font-bold text-zinc-50 transition-all hover:scale-105 active:scale-95 dark:bg-zinc-50 dark:text-zinc-900"
-                  >
-                    Dashboard
-                  </Link>
+                  {profile?.role === "admin" ? (
+                    <Link
+                      href="/admin/"
+                      className="rounded-full bg-red-600 px-6 py-2.5 text-sm font-black uppercase tracking-widest text-white transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-500/20"
+                    >
+                      Go to Admin
+                    </Link>
+                  ) : (
+                    <Link
+                      href="/dashboard/"
+                      className="rounded-full bg-zinc-900 px-6 py-2.5 text-sm font-bold text-zinc-50 transition-all hover:scale-105 active:scale-95 dark:bg-zinc-50 dark:text-zinc-900"
+                    >
+                      Dashboard
+                    </Link>
+                  )}
                 </div>
               ) : (
                 <Link
-                  href="/login"
+                  href="/login/"
                   className="rounded-full bg-zinc-900 px-8 py-2.5 text-sm font-bold text-zinc-50 transition-all hover:scale-105 active:scale-95 dark:bg-zinc-50 dark:text-zinc-900"
                 >
                   Login
@@ -125,7 +139,7 @@ export default function Navbar() {
             ))}
             {!user ? (
               <Link
-                href="/login"
+                href="/login/"
                 onClick={() => setIsMenuOpen(false)}
                 className="mt-4 rounded-2xl bg-zinc-900 py-4 text-center text-lg font-black text-zinc-50 dark:bg-zinc-50 dark:text-zinc-900"
               >

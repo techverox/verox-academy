@@ -11,7 +11,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!loading) {
       if (!profile || profile.role !== "admin") {
-        router.push("/dashboard");
+        router.push("/dashboard/");
       }
     }
   }, [profile, loading, router]);
@@ -32,13 +32,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="min-h-screen bg-zinc-50 dark:bg-black">
       <nav className="border-b border-zinc-200 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-black">
         <div className="container mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900 text-zinc-50 dark:bg-white dark:text-zinc-900 font-black">A</div>
-            <h1 className="text-xl font-black tracking-tight text-zinc-900 dark:text-zinc-50">Admin Center</h1>
+          <div className="flex items-center gap-8">
+            <div className="flex items-center gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-900 text-zinc-50 dark:bg-white dark:text-zinc-900 font-black">A</div>
+              <h1 className="text-xl font-black tracking-tight text-zinc-900 dark:text-zinc-50">Admin Center</h1>
+            </div>
+            <div className="hidden md:flex items-center gap-6">
+              <button onClick={() => router.push("/admin/")} className="text-sm font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors">Dashboard</button>
+              <button onClick={() => router.push("/admin/courses/")} className="text-sm font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors">Courses</button>
+            </div>
           </div>
           <div className="flex gap-4">
             <button 
-              onClick={() => router.push("/dashboard")}
+              onClick={() => router.push("/dashboard/")}
               className="text-sm font-bold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
             >
               Back to Student View
