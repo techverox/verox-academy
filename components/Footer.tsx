@@ -1,7 +1,23 @@
+"use client";
+
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const pathname = usePathname();
+
+  // Hide global footer on dashboard routes
+  const isDashboard = pathname?.startsWith("/dashboard") || 
+                      pathname?.startsWith("/admin") || 
+                      pathname?.startsWith("/learn") || 
+                      pathname?.startsWith("/settings") || 
+                      pathname?.startsWith("/certificates") || 
+                      pathname?.startsWith("/wishlist");
+
+  if (isDashboard) {
+    return null;
+  }
 
   return (
     <footer className="border-t border-zinc-100 bg-white dark:border-zinc-900 dark:bg-black">

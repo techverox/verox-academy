@@ -12,8 +12,15 @@ export default function Navbar() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Hide global navbar on admin routes to prevent double navbars
-  if (pathname?.startsWith("/admin")) {
+  // Hide global navbar on dashboard, learn, and admin routes
+  const isDashboard = pathname?.startsWith("/dashboard") || 
+                      pathname?.startsWith("/admin") || 
+                      pathname?.startsWith("/learn") || 
+                      pathname?.startsWith("/settings") || 
+                      pathname?.startsWith("/certificates") || 
+                      pathname?.startsWith("/wishlist");
+
+  if (isDashboard) {
     return null;
   }
 
