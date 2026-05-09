@@ -18,7 +18,7 @@ export default function Navbar() {
         </div>
         
         <div className="hidden md:flex md:items-center md:gap-6">
-          <Link href="/" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">
+          <Link href="/courses" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">
             Courses
           </Link>
           <Link href="/" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">

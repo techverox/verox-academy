@@ -5,6 +5,7 @@ import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
+import { createUserIfNotExists } from "@/lib/firestore";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -33,11 +34,22 @@ export default function LoginPage() {
     const provider = new GoogleAuthProvider();
 
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+
+      // Automatically create user document in Firestore
+      await createUserIfNotExists({
+        uid: firebaseUser.uid,
+        email: firebaseUser.email || "",
+        name: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
+      });
+
       router.push("/dashboard");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message || "Something went wrong. Please try again.");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setError((err as any).message || "Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }

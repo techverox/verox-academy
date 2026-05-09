@@ -18,7 +18,7 @@ export default function DashboardPage() {
             Welcome back, {user.displayName?.split(" ")[0] || "Student"}!
           </h1>
           <p className="text-zinc-500 dark:text-zinc-400">
-            Here's what's happening with your learning journey.
+            Here&apos;s what&apos;s happening with your learning journey.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -68,7 +68,7 @@ export default function DashboardPage() {
           </div>
           <h3 className="mt-4 text-lg font-medium text-zinc-900 dark:text-zinc-50">No courses yet</h3>
           <p className="mt-2 max-w-sm text-zinc-500 dark:text-zinc-400">
-            You haven't enrolled in any courses yet. Start your learning journey today!
+            You haven&apos;t enrolled in any courses yet. Start your learning journey today!
           </p>
           <button className="mt-8 rounded-full bg-zinc-900 px-8 py-3 text-sm font-semibold text-zinc-50 shadow-md transition-all hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
             Browse Courses
