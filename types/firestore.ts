@@ -39,8 +39,26 @@ export interface Course {
   creatorEmail: string | null;
   lessonCount: number;
   published: boolean;
+  averageRating?: number;
+  totalReviews?: number;
   createdAt: FirestoreTimestamp;
   updatedAt: FirestoreTimestamp;
+}
+
+// ─── Review ────────────────────────────────────────────────────────────────
+export interface Review {
+  id: string;
+  courseId: string;
+  userId: string;
+  userName: string;
+  userPhoto?: string;
+  rating: number; // 1-5
+  comment: string;
+  creatorReply?: {
+    text: string;
+    repliedAt: FirestoreTimestamp;
+  };
+  createdAt: FirestoreTimestamp;
 }
 
 // ─── Lesson ─────────────────────────────────────────────────────────────────
@@ -55,7 +73,48 @@ export interface Lesson {
   order: number;
   published: boolean;
   isPreviewFree: boolean;
+  notes?: string; // Markdown notes
   createdAt: FirestoreTimestamp;
+}
+
+// ─── Resource ───────────────────────────────────────────────────────────────
+export interface Resource {
+  id: string;
+  courseId: string;
+  lessonId: string;
+  title: string;
+  type: "pdf" | "zip" | "image" | "doc" | "link";
+  url: string;
+  size?: number; // bytes
+  createdAt: FirestoreTimestamp;
+}
+
+// ─── Quiz ──────────────────────────────────────────────────────────────────
+export interface Question {
+  id: string;
+  text: string;
+  options: string[];
+  correctOptionIndex: number;
+}
+
+export interface Quiz {
+  id: string;
+  courseId: string;
+  lessonId: string;
+  title: string;
+  questions: Question[];
+  passingScore: number; // percentage (0-100)
+  createdAt: FirestoreTimestamp;
+}
+
+export interface QuizAttempt {
+  id: string;
+  userId: string;
+  quizId: string;
+  score: number;
+  passed: boolean;
+  answers: number[]; // Index of selected options
+  attemptedAt: FirestoreTimestamp;
 }
 
 // ─── Enrollment ─────────────────────────────────────────────────────────────
@@ -65,6 +124,8 @@ export interface Enrollment {
   courseId: string;
   status: "active" | "completed";
   progress: number; // percentage
+  completedLessons: number;
+  totalLessons: number;
   enrolledAt: FirestoreTimestamp;
   completedAt?: FirestoreTimestamp;
   /** Payment ID that created this enrollment (source of truth) */
@@ -153,6 +214,19 @@ export interface PayoutRequest {
     type: "upi" | "bank";
     details: string;
   };
+}
+
+// ─── Certificate ───────────────────────────────────────────────────────────
+export interface Certificate {
+  id: string;
+  userId: string;
+  courseId: string;
+  creatorId: string;
+  studentName: string;
+  courseTitle: string;
+  creatorName: string;
+  serialNumber: string;
+  issuedAt: FirestoreTimestamp;
 }
 
 // ─── Aggregation: Platform Stats ────────────────────────────────────────────

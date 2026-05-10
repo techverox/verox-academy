@@ -1,24 +1,34 @@
 "use client";
 
 import { useEffect, useState, Suspense, useCallback, useRef } from "react";
-import { getLessonsByCourseId, getCourseById, getUserProgress, markLessonComplete } from "@/lib/firestore";
-import { Lesson, Course } from "@/types/firestore";
+import { getLessonsByCourseId, getCourseById, getUserProgress, markLessonComplete, getResourcesByLessonId, getQuizByLessonId, getLatestQuizAttempt, saveQuizAttempt } from "@/lib/firestore";
+import { Lesson, Course, Resource, Quiz, QuizAttempt, Question } from "@/types/firestore";
 import { useAuth } from "@/context/auth-context";
 import WistiaPlayer from "@/components/WistiaPlayer";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { 
   ChevronLeft, 
   Menu, 
   CheckCircle2, 
-  PlayCircle, 
-  Clock, 
-  ChevronRight,
-  Info,
-  Files
+  Play, 
+  ChevronRight, 
+  ArrowLeft,
+  Files,
+  Sparkles,
+  Award,
+  Loader2,
+  HelpCircle,
+  BrainCircuit,
+  Trophy as TrophyIcon,
+  Clock,
+  Info
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { CourseCompletionModal } from "@/components/CourseCompletionModal";
 
 function LearnViewerContent() {
   const router = useRouter();
@@ -32,7 +42,15 @@ function LearnViewerContent() {
   const [loading, setLoading] = useState(true);
   const [marking, setMarking] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<"content" | "resources">("content");
+  const [activeTab, setActiveTab] = useState<"content" | "resources" | "quiz">("content");
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [resourcesLoading, setResourcesLoading] = useState(false);
+  const [quiz, setQuiz] = useState<Quiz | null>(null);
+  const [quizLoading, setQuizLoading] = useState(false);
+  const [latestAttempt, setLatestAttempt] = useState<QuizAttempt | null>(null);
+  const [quizAnswers, setQuizAnswers] = useState<number[]>([]);
+  const [quizResult, setQuizResult] = useState<{ score: number; passed: boolean } | null>(null);
   
   const { user, loading: authLoading } = useAuth();
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -81,19 +99,116 @@ function LearnViewerContent() {
     }
   }, [courseId, user, authLoading, router, searchParams]);
 
+  useEffect(() => {
+    async function fetchResources() {
+      if (!activeLesson) return;
+      setResourcesLoading(true);
+      try {
+        const data = await getResourcesByLessonId(activeLesson.id);
+        setResources(data);
+      } catch (error) {
+        console.error("Failed to fetch resources:", error);
+      } finally {
+        setResourcesLoading(false);
+      }
+    }
+    fetchResources();
+  }, [activeLesson]);
+
+  useEffect(() => {
+    async function fetchQuiz() {
+      if (!activeLesson || !user) return;
+      setQuizLoading(true);
+      setQuizResult(null);
+      setQuizAnswers([]);
+      try {
+        const [quizData, attemptData] = await Promise.all([
+          getQuizByLessonId(activeLesson.id),
+          getLatestQuizAttempt(user.uid, activeLesson.id)
+        ]);
+        setQuiz(quizData);
+        setLatestAttempt(attemptData);
+      } catch (error) {
+        console.error("Failed to fetch quiz:", error);
+      } finally {
+        setQuizLoading(false);
+      }
+    }
+    fetchQuiz();
+  }, [activeLesson, user]);
+
+  const handleQuizSubmit = async () => {
+    if (!quiz || !user || !courseId || !activeLesson) return;
+    
+    let correctCount = 0;
+    quiz.questions.forEach((q, idx) => {
+      if (quizAnswers[idx] === q.correctOptionIndex) {
+        correctCount++;
+      }
+    });
+
+    const score = Math.round((correctCount / quiz.questions.length) * 100);
+    const passed = score >= (quiz.passingScore || 70);
+
+    setQuizResult({ score, passed });
+
+    try {
+      await saveQuizAttempt({
+        userId: user.uid,
+        quizId: quiz.id,
+        score,
+        passed,
+        answers: quizAnswers
+      });
+      
+      // If passed, we can mark lesson as complete automatically
+      if (passed && !completedLessonIds.includes(activeLesson.id)) {
+        await handleMarkComplete();
+      }
+      
+      setLatestAttempt({
+        id: "temp",
+        userId: user.uid,
+        quizId: quiz.id,
+        score,
+        passed,
+        answers: quizAnswers,
+        attemptedAt: { seconds: Date.now() / 1000 } as any
+      });
+    } catch (error) {
+      console.error("Failed to save attempt:", error);
+    }
+  };
+
   const handleMarkComplete = useCallback(async () => {
     if (!user || !activeLesson || !courseId) return;
+    if (completedLessonIds.includes(activeLesson.id)) return;
     
     setMarking(true);
     try {
       await markLessonComplete(user.uid, courseId, activeLesson.id);
       setCompletedLessonIds(prev => [...prev, activeLesson.id]);
+      
+      // Auto Progression Logic
+      const currentIndex = lessons.findIndex(l => l.id === activeLesson.id);
+      if (currentIndex < lessons.length - 1) {
+        // Move to next lesson after a short delay
+        setTimeout(() => {
+          setActiveLesson(lessons[currentIndex + 1]);
+        }, 2000);
+      } else {
+        // Check if all lessons are now completed
+        const updatedCompleted = [...completedLessonIds, activeLesson.id];
+        if (updatedCompleted.length >= lessons.length) {
+          setShowCompletionModal(true);
+        }
+      }
     } catch (error) {
       console.error("Failed to mark lesson complete:", error);
     } finally {
       setMarking(false);
     }
-  }, [user, activeLesson, courseId]);
+  }, [user, activeLesson, courseId, completedLessonIds, lessons]);
 
   if (loading) {
     return (
@@ -201,35 +316,172 @@ function LearnViewerContent() {
                   {activeLesson?.title}
                 </h2>
 
-                <div className="flex border-b border-border/50">
+                <div className="flex bg-muted/20 p-1.5 rounded-2xl border border-border/50">
+                <button 
+                  onClick={() => setActiveTab("content")}
+                  className={`flex-1 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === "content" ? "bg-white text-black shadow-lg" : "text-secondary-text hover:text-white"}`}
+                >
+                  Content
+                </button>
+                <button 
+                  onClick={() => setActiveTab("resources")}
+                  className={`flex-1 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === "resources" ? "bg-white text-black shadow-lg" : "text-secondary-text hover:text-white"}`}
+                >
+                  Resources
+                </button>
+                {quiz && (
                   <button 
-                    onClick={() => setActiveTab("content")}
-                    className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeTab === "content" ? "text-primary" : "text-secondary-text hover:text-white"}`}
+                    onClick={() => setActiveTab("quiz")}
+                    className={`flex-1 px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === "quiz" ? "bg-white text-black shadow-lg" : "text-secondary-text hover:text-white"}`}
                   >
-                    Lesson Content
-                    {activeTab === "content" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary shadow-[0_0_8px_var(--primary)]" />}
+                    Quiz
                   </button>
-                  <button 
-                    onClick={() => setActiveTab("resources")}
-                    className={`pb-4 px-6 text-sm font-bold transition-all relative ${activeTab === "resources" ? "text-primary" : "text-secondary-text hover:text-white"}`}
-                  >
-                    Resources
-                    {activeTab === "resources" && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary shadow-[0_0_8px_var(--primary)]" />}
-                  </button>
-                </div>
+                )}
+              </div>
 
                 <div className="py-6 animate-in fade-in duration-500">
                   {activeTab === "content" ? (
-                    <div className="prose prose-invert prose-sm max-w-none">
-                       <p className="text-secondary-text text-lg leading-relaxed font-medium">
-                         {activeLesson?.description || "In this lesson, we will cover the core concepts of " + activeLesson?.title + ". Make sure to follow along and take notes."}
-                       </p>
+                    <div className="prose prose-invert prose-lg max-w-none">
+                       {activeLesson?.notes ? (
+                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                           {activeLesson.notes}
+                         </ReactMarkdown>
+                       ) : (
+                         <p className="text-secondary-text text-lg leading-relaxed font-medium">
+                           {activeLesson?.description || "In this lesson, we will cover the core concepts of " + activeLesson?.title + ". Make sure to follow along and take notes."}
+                         </p>
+                       )}
                     </div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center py-12 px-6 rounded-2xl bg-muted/20 border border-dashed border-border">
-                       <Files className="w-12 h-12 text-zinc-600 mb-4" />
-                       <p className="text-sm font-bold text-white mb-1">No resources available</p>
-                       <p className="text-xs text-secondary-text">Downloadable materials for this lesson will appear here.</p>
+                    <div className="space-y-4">
+                      {resourcesLoading ? (
+                        <div className="flex items-center justify-center py-12">
+                          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                        </div>
+                      ) : resources.length > 0 ? (
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          {resources.map((resource) => (
+                            <a 
+                              key={resource.id}
+                              href={resource.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-4 p-4 rounded-2xl bg-muted/20 border border-border/50 hover:border-primary/30 transition-all group"
+                            >
+                              <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                                <Files className="w-6 h-6" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold text-white truncate">{resource.title}</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                                  {resource.type} • {resource.size ? (resource.size / 1024 / 1024).toFixed(2) + " MB" : "Click to View"}
+                                </p>
+                              </div>
+                            </a>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-12 px-6 rounded-2xl bg-muted/20 border border-dashed border-border">
+                           <Files className="w-12 h-12 text-zinc-600 mb-4" />
+                           <p className="text-sm font-bold text-white mb-1">No resources available</p>
+                           <p className="text-xs text-secondary-text">Downloadable materials for this lesson will appear here.</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                       {quizLoading ? (
+                         <div className="flex items-center justify-center py-20">
+                            <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                         </div>
+                       ) : quiz ? (
+                         <div className="space-y-10">
+                            {/* Quiz Header */}
+                            <div className="flex items-center justify-between p-6 rounded-[2rem] bg-primary/5 border border-primary/20">
+                               <div className="flex items-center gap-4">
+                                  <div className="h-12 w-12 rounded-xl bg-primary text-white flex items-center justify-center">
+                                     <BrainCircuit className="w-6 h-6" />
+                                  </div>
+                                  <div>
+                                     <h3 className="text-lg font-black text-white">{quiz.title}</h3>
+                                     <p className="text-xs text-secondary-text font-bold uppercase tracking-widest">Passing Score: {quiz.passingScore}%</p>
+                                  </div>
+                               </div>
+                               {latestAttempt && (
+                                 <Badge variant={latestAttempt.passed ? "success" : "destructive"} className="h-10 px-4 rounded-xl">
+                                    Last Score: {latestAttempt.score}%
+                                 </Badge>
+                               )}
+                            </div>
+
+                            {quizResult ? (
+                              <div className="text-center py-12 space-y-6 bg-muted/10 rounded-[3rem] border border-border">
+                                 <div className={`mx-auto h-20 w-20 rounded-[2rem] flex items-center justify-center ${quizResult.passed ? "bg-success text-white shadow-[0_0_30px_rgba(34,197,94,0.3)]" : "bg-red-500 text-white shadow-[0_0_30px_rgba(239,68,68,0.3)]"}`}>
+                                    {quizResult.passed ? <TrophyIcon className="w-10 h-10" /> : <ArrowLeft className="w-10 h-10 rotate-90" />}
+                                 </div>
+                                 <div>
+                                    <h4 className="text-3xl font-black text-white">{quizResult.passed ? "Great Job!" : "Not Quite Yet"}</h4>
+                                    <p className="text-secondary-text font-medium mt-2">You scored <span className={`font-black ${quizResult.passed ? "text-success" : "text-red-500"}`}>{quizResult.score}%</span></p>
+                                 </div>
+                                 <Button 
+                                   onClick={() => { setQuizResult(null); setQuizAnswers([]); }}
+                                   variant="outline"
+                                   className="rounded-xl px-8"
+                                 >
+                                    Try Again
+                                 </Button>
+                              </div>
+                            ) : (
+                              <div className="space-y-8">
+                                {quiz.questions.map((q, qIdx) => (
+                                  <div key={q.id} className="space-y-4">
+                                     <div className="flex gap-4">
+                                        <span className="flex-shrink-0 h-8 w-8 rounded-full bg-zinc-800 text-white flex items-center justify-center text-xs font-black">
+                                           {qIdx + 1}
+                                        </span>
+                                        <h5 className="text-lg font-bold text-white leading-relaxed">{q.text}</h5>
+                                     </div>
+                                     <div className="grid gap-3 pl-12">
+                                        {q.options.map((opt, oIdx) => (
+                                          <button
+                                            key={oIdx}
+                                            onClick={() => {
+                                              const newAns = [...quizAnswers];
+                                              newAns[qIdx] = oIdx;
+                                              setQuizAnswers(newAns);
+                                            }}
+                                            className={`w-full text-left p-4 rounded-2xl border transition-all font-medium ${
+                                              quizAnswers[qIdx] === oIdx 
+                                              ? "bg-primary/10 border-primary text-white" 
+                                              : "bg-muted/5 border-border/50 text-secondary-text hover:border-zinc-700"
+                                            }`}
+                                          >
+                                            {opt}
+                                          </button>
+                                        ))}
+                                     </div>
+                                  </div>
+                                ))}
+                                <div className="pt-6 border-t border-border/50">
+                                   <Button 
+                                     size="lg" 
+                                     className="w-full h-14 rounded-2xl text-lg"
+                                     disabled={quizAnswers.length < quiz.questions.length || quizAnswers.includes(undefined as any)}
+                                     onClick={handleQuizSubmit}
+                                   >
+                                      Submit Quiz
+                                   </Button>
+                                </div>
+                              </div>
+                            )}
+                         </div>
+                       ) : (
+                         <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                            <HelpCircle className="w-12 h-12 text-zinc-600 mb-4" />
+                            <p className="text-sm font-bold text-white mb-1">No quiz for this lesson</p>
+                            <p className="text-xs text-secondary-text">This lesson doesn&apos;t have an evaluation component.</p>
+                         </div>
+                       )}
                     </div>
                   )}
                 </div>
@@ -251,14 +503,35 @@ function LearnViewerContent() {
                      <span className="text-sm font-bold">Lesson Completed</span>
                    </div>
                  )}
-                 <Button variant="outline" size="lg" className="group">
-                   Next Lesson
-                   <ChevronRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                 </Button>
+                  <Button 
+                    variant="outline" 
+                    size="lg" 
+                    className="group"
+                    onClick={() => {
+                      const currentIndex = lessons.findIndex(l => l.id === activeLesson?.id);
+                      if (currentIndex < lessons.length - 1) {
+                        setActiveLesson(lessons[currentIndex + 1]);
+                      }
+                    }}
+                    disabled={lessons.indexOf(activeLesson!) === lessons.length - 1}
+                  >
+                    Next Lesson
+                    <ChevronRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </Button>
               </div>
             </div>
           </div>
         </main>
+
+        {/* Completion Celebration Overlay */}
+        {showCompletionModal && course && user && (
+          <CourseCompletionModal 
+            courseTitle={course.title} 
+            courseId={course.id}
+            userId={user.uid}
+            onClose={() => setShowCompletionModal(false)} 
+          />
+        )}
 
         {/* Right Sidebar Playlist */}
         <aside 

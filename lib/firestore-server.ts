@@ -251,17 +251,24 @@ export async function createEnrollmentServer(
     return false;
   }
 
+  // Fetch course to get lesson count for aggregation
+  const courseDoc = await db.collection("courses").doc(courseId).get();
+  const lessonCount = courseDoc.exists ? (courseDoc.data()?.lessonCount || 0) : 0;
+
   const enrollment = {
+    id: enrollmentId,
     userId,
     courseId,
     status: "active" as const,
     progress: 0,
+    completedLessons: 0,
+    totalLessons: lessonCount,
     enrolledAt: FieldValue.serverTimestamp(),
     paymentId,
   };
 
-  await enrollmentRef.set({ id: enrollmentId, ...enrollment });
-  console.log(`[ENROLLMENT] Created enrollment ${enrollmentId}`);
+  await enrollmentRef.set(enrollment);
+  console.log(`[ENROLLMENT] Created enrollment ${enrollmentId} with ${lessonCount} lessons`);
   return true;
 }
 

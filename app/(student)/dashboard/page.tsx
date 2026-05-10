@@ -45,8 +45,12 @@ export default function DashboardPage() {
 
   if (!user && !loading) return null;
 
-  // Find the most recent course (highest percentage or first in list)
-  const lastCourse = stats?.enrolledCourses?.[0];
+  // Filter courses
+  const inProgressCourses = stats?.enrolledCourses?.filter((c: any) => c.status !== "completed") || [];
+  const completedCourses = stats?.enrolledCourses?.filter((c: any) => c.status === "completed") || [];
+
+  // Find the most recent active course
+  const lastCourse = inProgressCourses[0] || stats?.enrolledCourses?.[0];
 
   return (
     <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -60,19 +64,19 @@ export default function DashboardPage() {
           Welcome back, {user?.displayName?.split(" ")[0] || "Student"}
         </h1>
         <p className="text-secondary-text font-medium text-lg">
-          You have completed <span className="text-white font-bold">{stats?.totalCompletedLessons || 0} lessons</span> this month. Keep it up!
+          You have completed <span className="text-white font-bold">{stats?.totalCompletedLessons || 0} lessons</span> so far. Keep it up!
         </p>
       </div>
 
       {/* Hero: Continue Learning */}
-      {lastCourse && (
+      {lastCourse && lastCourse.status !== "completed" && (
         <section>
-          <div className="relative group overflow-hidden rounded-3xl border border-border bg-[#151B2E] transition-all hover:border-primary/40 shadow-2xl">
+          <div className="relative group overflow-hidden rounded-[2.5rem] border border-border bg-[#151B2E] transition-all hover:border-primary/40 shadow-2xl">
             <div className="absolute inset-0 bg-gradient-to-r from-[#0B0F19] via-transparent to-transparent z-10" />
             <div className="flex flex-col md:flex-row min-h-[320px]">
               {/* Content */}
               <div className="relative z-20 flex flex-1 flex-col justify-center p-8 md:p-12">
-                <Badge variant="success" className="w-fit mb-4">Last Accessed</Badge>
+                <Badge variant="success" className="w-fit mb-4">Continue Learning</Badge>
                 <h2 className="text-3xl font-black text-white mb-4 leading-tight">
                   {lastCourse.courseTitle}
                 </h2>
@@ -96,7 +100,7 @@ export default function DashboardPage() {
                 </div>
 
                 <Link href={`/learn/viewer/?id=${lastCourse.courseId}`}>
-                  <Button size="lg" className="w-fit group/btn">
+                  <Button size="lg" className="w-fit group/btn rounded-2xl h-14 px-8">
                     Resume Course
                     <ArrowRight className="ml-2 w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
                   </Button>
@@ -122,44 +126,38 @@ export default function DashboardPage() {
       <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <StatsCard 
           title="Courses Active" 
-          value={stats?.totalEnrolled || 0} 
+          value={inProgressCourses.length} 
           icon={BookOpen} 
-          trend="+2" 
+          trend={inProgressCourses.length > 0 ? "In Progress" : "Start Now"} 
         />
         <StatsCard 
-          title="Lessons Done" 
+          title="Courses Completed" 
+          value={completedCourses.length} 
+          icon={Trophy} 
+          trend={completedCourses.length > 0 ? "Well done!" : "Keep going"} 
+          trendType={completedCourses.length > 0 ? "positive" : "neutral"}
+        />
+        <StatsCard 
+          title="Total Lessons" 
           value={stats?.totalCompletedLessons || 0} 
           icon={Play} 
-          trend="+12%" 
-        />
-        <StatsCard 
-          title="Learning Streak" 
-          value="12 Days" 
-          icon={Trophy} 
-          trend="Top 5%" 
-          trendType="positive"
+          trend="Lifetime" 
         />
       </section>
 
-      {/* Recent Courses List */}
-      <section className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold text-white tracking-tight">Recent Courses</h3>
-          <Link href="/courses/" className="text-sm font-bold text-primary hover:text-primary-hover flex items-center gap-2">
-            View All <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-
-        {loading ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-[400px] animate-pulse rounded-2xl bg-muted/30 border border-border" />
-            ))}
+      {/* In Progress Courses */}
+      {inProgressCourses.length > 0 && (
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+              In Progress
+              <Badge variant="secondary" className="bg-white/5 border-white/10">{inProgressCourses.length}</Badge>
+            </h3>
           </div>
-        ) : stats?.enrolledCourses.length > 0 ? (
+
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {stats.enrolledCourses.map((course: any) => (
-              <Card key={course.courseId} className="group overflow-hidden border-border/50 hover:border-primary/20 bg-[#111827]/50">
+            {inProgressCourses.map((course: any) => (
+              <Card key={course.courseId} className="group overflow-hidden border-border/50 hover:border-primary/20 bg-[#111827]/50 rounded-[2rem]">
                 <div className="relative aspect-video w-full">
                   <Image
                     src={course.thumbnail}
@@ -177,20 +175,16 @@ export default function DashboardPage() {
                 
                 <div className="p-6">
                   <h4 className="text-base font-bold text-white mb-2 line-clamp-1">{course.courseTitle}</h4>
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="flex items-center gap-1.5 text-xs text-secondary-text font-semibold">
-                      <BookOpen className="w-3 h-3" />
-                      {course.totalLessons} Lessons
-                    </div>
+                  <div className="flex items-center gap-4 mb-6 text-xs text-secondary-text font-semibold">
+                    <span className="flex items-center gap-1.5"><BookOpen className="w-3 h-3" />{course.totalLessons} Lessons</span>
                   </div>
                   
-                  {/* Small Progress bar */}
                   <div className="h-1 w-full bg-white/5 rounded-full mb-6 overflow-hidden">
                     <div className="h-full bg-primary transition-all duration-500" style={{ width: `${course.percentage}%` }} />
                   </div>
 
                   <Link href={`/learn/viewer/?id=${course.courseId}`}>
-                    <Button variant="outline" className="w-full">
+                    <Button variant="outline" className="w-full rounded-xl">
                       Continue Learning
                     </Button>
                   </Link>
@@ -198,21 +192,75 @@ export default function DashboardPage() {
               </Card>
             ))}
           </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-20 px-6 text-center rounded-3xl border border-dashed border-border bg-muted/10">
-            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-6 text-zinc-500">
-              <Search className="w-8 h-8" />
-            </div>
-            <h4 className="text-xl font-bold text-white mb-2">No courses found</h4>
-            <p className="text-sm text-secondary-text max-w-xs mb-8">
-              Start your learning journey by exploring our premium courses.
-            </p>
-            <Link href="/courses/">
-              <Button>Browse Courses</Button>
-            </Link>
+        </section>
+      )}
+
+      {/* Completed Courses */}
+      {completedCourses.length > 0 && (
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+              Completed Courses
+              <Badge variant="success" className="bg-success/10 border-success/20">{completedCourses.length}</Badge>
+            </h3>
           </div>
-        )}
-      </section>
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {completedCourses.map((course: any) => (
+              <Card key={course.courseId} className="group overflow-hidden border-success/20 bg-success/5 rounded-[2rem]">
+                <div className="relative aspect-video w-full grayscale-[50%] group-hover:grayscale-0 transition-all">
+                  <Image
+                    src={course.thumbnail}
+                    alt={course.courseTitle}
+                    fill
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-success/10 mix-blend-overlay" />
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                     <div className="h-12 w-12 rounded-full bg-success text-white flex items-center justify-center shadow-lg">
+                        <Trophy className="w-6 h-6" />
+                     </div>
+                  </div>
+                </div>
+                
+                <div className="p-6">
+                  <h4 className="text-base font-bold text-white mb-2 line-clamp-1">{course.courseTitle}</h4>
+                  <p className="text-xs text-secondary-text mb-6 font-medium">Completed on {course.completedAt ? new Date(course.completedAt.seconds * 1000).toLocaleDateString() : 'recently'}</p>
+                  
+                  <div className="flex flex-col gap-2">
+                    <Link href={`/verify-certificate/${user?.uid}_${course.courseId}`} className="w-full">
+                      <Button className="w-full rounded-xl gap-2 h-11 bg-success hover:bg-success-hover text-white border-none">
+                        <Award className="w-4 h-4" />
+                        View Certificate
+                      </Button>
+                    </Link>
+                    <Link href={`/learn/viewer/?id=${course.courseId}`}>
+                      <Button variant="ghost" className="w-full rounded-xl h-11 text-secondary-text hover:text-white">
+                        Review Lessons
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {!loading && stats?.enrolledCourses.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 px-6 text-center rounded-[3rem] border border-dashed border-border bg-muted/10">
+          <div className="w-20 h-20 rounded-[2rem] bg-muted flex items-center justify-center mb-6 text-zinc-500">
+            <Search className="w-10 h-10" />
+          </div>
+          <h4 className="text-2xl font-black text-white mb-2">Your library is empty</h4>
+          <p className="text-lg text-secondary-text max-w-xs mb-8 font-medium">
+            Discover our curated paths and start your journey today.
+          </p>
+          <Link href="/courses/">
+            <Button size="lg" className="rounded-2xl px-10">Browse Courses</Button>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

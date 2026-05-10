@@ -12,8 +12,8 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { getCourseById, getLessonsByCourseId, isUserEnrolled } from "@/lib/firestore";
-import { Course, Lesson } from "@/types/firestore";
+import { getCourseById, getLessonsByCourseId, isUserEnrolled, getReviewsByCourseId, addReview } from "@/lib/firestore";
+import { Course, Lesson, Review } from "@/types/firestore";
 import { useAuth } from "@/context/auth-context";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -25,7 +25,11 @@ import {
   Infinity as InfinityIcon, 
   ChevronRight,
   Sparkles,
-  PlayCircle
+  PlayCircle,
+  Star,
+  MessageSquare,
+  User as UserIcon,
+  CornerDownRight
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -41,6 +45,11 @@ function CourseViewContent() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEnrolled, setIsEnrolled] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [userReview, setUserReview] = useState<Review | null>(null);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [newReview, setNewReview] = useState({ rating: 5, comment: "" });
   const { user } = useAuth();
 
   useEffect(() => {
@@ -60,9 +69,15 @@ function CourseViewContent() {
         setCourse(courseData);
         setLessons(lessonsData);
 
+        const reviewsData = await getReviewsByCourseId(courseId);
+        setReviews(reviewsData);
+
         if (user) {
           const enrolled = await isUserEnrolled(user.uid, courseId);
           setIsEnrolled(enrolled);
+          
+          const existing = reviewsData.find(r => r.userId === user.uid);
+          if (existing) setUserReview(existing);
         }
       } catch (error) {
         console.error("Failed to fetch course details:", error);
@@ -72,6 +87,41 @@ function CourseViewContent() {
     }
     fetchData();
   }, [courseId, user, router]);
+
+  const handleAddReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !course || !courseId) return;
+    
+    setSubmittingReview(true);
+    try {
+      await addReview({
+        courseId,
+        userId: user.uid,
+        userName: user.displayName || "Anonymous Student",
+        userPhoto: user.photoURL || undefined,
+        rating: newReview.rating,
+        comment: newReview.comment
+      });
+      
+      // Refresh reviews
+      const updated = await getReviewsByCourseId(courseId);
+      setReviews(updated);
+      setUserReview(updated.find(r => r.userId === user.uid) || null);
+      setShowReviewForm(false);
+      
+      // Update course locally
+      setCourse(prev => prev ? {
+        ...prev,
+        totalReviews: (prev.totalReviews || 0) + 1,
+        averageRating: Number((( (prev.averageRating || 0) * (prev.totalReviews || 0) + newReview.rating ) / ((prev.totalReviews || 0) + 1)).toFixed(1))
+      } : null);
+      
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -110,6 +160,25 @@ function CourseViewContent() {
             <h1 className="text-5xl font-black tracking-tight text-white md:text-7xl lg:text-8xl leading-[0.9]">
               {course.title}
             </h1>
+            
+            <div className="mt-8 flex flex-wrap items-center gap-6">
+               <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10">
+                  <div className="flex text-yellow-500">
+                     {[...Array(5)].map((_, i) => (
+                       <Star key={i} className={`w-4 h-4 ${i < Math.floor(course.averageRating || 5) ? "fill-current" : "opacity-30"}`} />
+                     ))}
+                  </div>
+                  <span className="text-sm font-black text-white">{course.averageRating || "5.0"}</span>
+                  <span className="text-[10px] font-bold text-secondary-text uppercase tracking-widest border-l border-white/10 pl-2">
+                    {course.totalReviews || 0} Reviews
+                  </span>
+               </div>
+               <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 border border-primary/20">
+                  <Badge variant="success" className="h-4 px-1.5 text-[8px]">Verified</Badge>
+                  <span className="text-xs font-black text-primary uppercase tracking-widest">Enrolled: 480+ Students</span>
+               </div>
+            </div>
+
             <p className="mt-10 text-xl font-medium text-secondary-text leading-relaxed max-w-2xl">
               {course.description}
             </p>
@@ -177,6 +246,106 @@ function CourseViewContent() {
                <h4 className="text-lg font-bold text-white mb-2">Verified Certificate</h4>
                <p className="text-sm text-secondary-text leading-relaxed font-medium">Receive a professional certificate upon completion to showcase your skills to the world.</p>
             </Card>
+          </section>
+
+          {/* Review System */}
+          <section className="space-y-10">
+             <div className="flex items-center justify-between">
+                <h2 className="text-3xl font-black tracking-tight text-white">Student Testimonials</h2>
+                {isEnrolled && !userReview && (
+                  <Button 
+                   variant="outline" 
+                   className="rounded-xl border-primary/30 text-primary hover:bg-primary/5"
+                   onClick={() => setShowReviewForm(true)}
+                  >
+                    Write Review
+                  </Button>
+                )}
+             </div>
+
+             {showReviewForm && (
+               <Card className="p-8 border-primary/30 bg-primary/5 animate-in slide-in-from-top-4 duration-500">
+                  <form onSubmit={handleAddReview} className="space-y-6">
+                     <div className="flex flex-col gap-2">
+                        <label className="text-xs font-black uppercase tracking-widest text-secondary-text">Select Rating</label>
+                        <div className="flex gap-2">
+                           {[1, 2, 3, 4, 5].map((s) => (
+                             <button 
+                               key={s}
+                               type="button"
+                               onClick={() => setNewReview({...newReview, rating: s})}
+                               className={`p-2 transition-all ${newReview.rating >= s ? "text-yellow-500 scale-110" : "text-zinc-600 hover:text-zinc-400"}`}
+                             >
+                               <Star className={`w-8 h-8 ${newReview.rating >= s ? "fill-current" : ""}`} />
+                             </button>
+                           ))}
+                        </div>
+                     </div>
+                     <div className="flex flex-col gap-2">
+                        <label className="text-xs font-black uppercase tracking-widest text-secondary-text">Your Experience</label>
+                        <textarea 
+                         rows={4}
+                         required
+                         className="w-full rounded-2xl bg-zinc-950 border border-border/50 p-6 text-white outline-none focus:border-primary transition-all resize-none font-medium"
+                         placeholder="What did you think of this course?"
+                         value={newReview.comment}
+                         onChange={(e) => setNewReview({...newReview, comment: e.target.value})}
+                        />
+                     </div>
+                     <div className="flex gap-4">
+                        <Button type="submit" disabled={submittingReview}>
+                          {submittingReview ? "Syncing..." : "Submit Review"}
+                        </Button>
+                        <Button variant="ghost" onClick={() => setShowReviewForm(false)}>Cancel</Button>
+                     </div>
+                  </form>
+               </Card>
+             )}
+
+             {reviews.length > 0 ? (
+               <div className="grid gap-6">
+                 {reviews.map((review) => (
+                   <div key={review.id} className="p-8 rounded-[2rem] bg-[#151B2E]/30 border border-border/50 space-y-6">
+                      <div className="flex items-center justify-between">
+                         <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-2xl bg-zinc-800 flex items-center justify-center text-white font-black text-xl overflow-hidden">
+                               {review.userPhoto ? <img src={review.userPhoto} className="h-full w-full object-cover" /> : review.userName.charAt(0)}
+                            </div>
+                            <div>
+                               <p className="font-black text-white">{review.userName}</p>
+                               <div className="flex text-yellow-500 mt-1">
+                                  {[...Array(5)].map((_, i) => (
+                                    <Star key={i} className={`w-3 h-3 ${i < review.rating ? "fill-current" : "opacity-30"}`} />
+                                  ))}
+                               </div>
+                            </div>
+                         </div>
+                         <Badge variant="outline" className="text-[10px] opacity-50">Verified Student</Badge>
+                      </div>
+                      <p className="text-secondary-text font-medium leading-relaxed italic">
+                        &ldquo;{review.comment}&rdquo;
+                      </p>
+                      {review.creatorReply && (
+                        <div className="ml-8 pt-6 border-t border-border/20 space-y-3">
+                           <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-primary">
+                              <CornerDownRight className="w-4 h-4" />
+                              Instructor Response
+                           </div>
+                           <p className="text-sm font-medium text-zinc-400 bg-white/5 p-4 rounded-2xl border border-white/5">
+                              {review.creatorReply.text}
+                           </p>
+                        </div>
+                      )}
+                   </div>
+                 ))}
+               </div>
+             ) : (
+               <div className="p-20 text-center rounded-[3rem] border border-dashed border-border/50">
+                  <MessageSquare className="w-12 h-12 text-zinc-700 mx-auto mb-6" />
+                  <h4 className="text-xl font-bold text-white mb-2">No reviews yet</h4>
+                  <p className="text-secondary-text max-w-sm mx-auto">Be the first to share your learning experience with the world.</p>
+               </div>
+             )}
           </section>
         </div>
 
