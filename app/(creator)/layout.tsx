@@ -40,6 +40,7 @@ export default function CreatorLayout({ children }: { children: React.ReactNode 
   const menuItems = [
     { icon: LayoutDashboard, label: "Dashboard", href: "/creator" },
     { icon: BookOpen, label: "My Courses", href: "/creator/courses" },
+    { icon: Users, label: "My Articles", href: "/creator/articles" },
     { icon: DollarSign, label: "Earnings", href: "/creator/payouts" },
     { icon: TrendingUp, label: "Analytics", href: "/creator/analytics" },
   ];

@@ -13,11 +13,15 @@ import {
   ArrowDownRight,
   ChevronRight,
   TrendingUp,
-  Layout
+  Layout,
+  Plus
 } from "lucide-react";
+import AnalyticsCharts from "@/components/creator/AnalyticsCharts";
+import { useRouter } from "next/navigation";
 
 export default function CreatorDashboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [stats, setStats] = useState<CreatorStats | null>(null);
   const [recentEnrollments, setRecentEnrollments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,6 +132,36 @@ export default function CreatorDashboardPage() {
         ))}
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <AnalyticsCharts 
+          title="Revenue Growth" 
+          type="area" 
+          color="#10B981"
+          data={[
+            { name: "Jan", value: 12000 },
+            { name: "Feb", value: 15000 },
+            { name: "Mar", value: 28000 },
+            { name: "Apr", value: 22000 },
+            { name: "May", value: 35000 },
+            { name: "Jun", value: 45000 },
+          ]}
+        />
+        <AnalyticsCharts 
+          title="New Enrollments" 
+          type="bar" 
+          color="#7C3AED"
+          data={[
+            { name: "Mon", value: 12 },
+            { name: "Tue", value: 18 },
+            { name: "Wed", value: 15 },
+            { name: "Thu", value: 25 },
+            { name: "Fri", value: 32 },
+            { name: "Sat", value: 28 },
+            { name: "Sun", value: 20 },
+          ]}
+        />
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Recent Activity */}
         <div className="lg:col-span-2 space-y-6">
@@ -211,9 +245,3 @@ export default function CreatorDashboardPage() {
   );
 }
 
-// Minimal Plus icon for the button since it wasn't imported from lucide-react in the card
-const Plus = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 4v16m8-8H4"></path>
-  </svg>
-);

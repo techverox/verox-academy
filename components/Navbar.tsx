@@ -27,6 +27,8 @@ export default function Navbar() {
 
   const navLinks = [
     { name: "Courses", href: "/courses/" },
+    { name: "Insights", href: "/blog" },
+    { name: "Hall of Fame", href: "/top-creators" },
     { name: "Pricing", href: "/#pricing" },
     ...(isAdmin ? [{ name: "Admin Dashboard", href: "/admin/" }] : []),
     ...(isCreator && !isAdmin ? [{ name: "Creator Studio", href: "/creator/" }] : []),

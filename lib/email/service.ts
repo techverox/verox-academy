@@ -33,6 +33,13 @@ export class EmailService {
         lastAttemptAt: timestamp,
       };
 
+      // Firestore does not accept undefined values
+      Object.keys(emailLog).forEach(key => {
+        if (emailLog[key] === undefined) {
+          delete emailLog[key];
+        }
+      });
+
       await logRef.set(emailLog);
       return logRef.id;
     } catch (error) {
@@ -84,7 +91,13 @@ export class EmailService {
         lastError = err.message || "Unknown error";
         console.warn(`[EMAIL_SERVICE] Attempt ${attempts} failed for ${template}:`, lastError);
         
-        if (attempts >= maxAttempts) {
+        // Stop retries for hard errors (auth, validation, free tier limits)
+        const isHardError = 
+          lastError.includes("testing emails") || 
+          lastError.includes("API key") || 
+          lastError.includes("valid domain");
+
+        if (attempts >= maxAttempts || isHardError) {
           // Log final failure
           await this.logEmail({
             recipientEmail: Array.isArray(to) ? to.join(", ") : to,

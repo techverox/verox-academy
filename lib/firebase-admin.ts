@@ -35,18 +35,28 @@ function initializeAdminApp(): App {
 
   // If service account credentials are available, use them
   if (clientEmail && privateKey) {
+    // Ensure the private key is properly formatted with newlines
+    const formattedKey = privateKey.replace(/\\n/g, "\n");
+
     return initializeApp({
       credential: cert({
         projectId,
         clientEmail,
-        // Private key comes with escaped newlines from env vars
-        privateKey: privateKey.replace(/\\n/g, "\n"),
+        privateKey: formattedKey,
       }),
     });
   }
 
-  // Fallback: use project ID only (works with Application Default Credentials
-  // or when running on GCP infrastructure)
+  // If we're running locally but missing credentials, throw a helpful error
+  const isLocal = process.env.NODE_ENV === "development" || process.env.HOSTNAME === "localhost";
+  if (isLocal && (!clientEmail || !privateKey)) {
+    throw new Error(
+      "MISSING FIREBASE ADMIN CREDENTIALS: For local development, you must provide " +
+      "FIREBASE_CLIENT_EMAIL and FIREBASE_PRIVATE_KEY in your .env.local file."
+    );
+  }
+
+  // Fallback: use project ID only (works with Application Default Credentials)
   return initializeApp({
     projectId,
   });

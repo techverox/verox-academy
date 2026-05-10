@@ -104,8 +104,39 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setProfile(userProfile);
 
         const { isAdmin: admin, isCreator: creator } = await checkRoles(firebaseUser, userProfile);
-        setIsAdmin(admin);
-        setIsCreator(creator);
+        let finalAdmin = admin;
+        let finalCreator = creator;
+
+        // AUTO-SYNC: If Firestore says admin/creator but token claims don't match, sync them
+        try {
+          const tokenResult = await firebaseUser.getIdTokenResult();
+          const claimAdmin = tokenResult.claims.admin === true;
+          const claimCreator = tokenResult.claims.creator === true;
+          const firestoreAdmin = userProfile?.role === "admin";
+          const firestoreCreator = userProfile?.role === "creator" || firestoreAdmin;
+
+          if ((firestoreAdmin && !claimAdmin) || (firestoreCreator && !claimCreator)) {
+            console.log("[AUTH] Discrepancy detected between Firestore role and Custom Claims. Syncing...");
+            const token = await firebaseUser.getIdToken();
+            const res = await fetch("/api/auth/sync-claims", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            
+            if (res.ok) {
+              await firebaseUser.getIdToken(true); // Force refresh token
+              const newTokenResult = await firebaseUser.getIdTokenResult();
+              finalAdmin = newTokenResult.claims.admin === true || firestoreAdmin;
+              finalCreator = newTokenResult.claims.creator === true || firestoreCreator;
+              console.log("[AUTH] Claims synced successfully.");
+            }
+          }
+        } catch (syncError) {
+          console.error("[AUTH] Failed to auto-sync claims:", syncError);
+        }
+
+        setIsAdmin(finalAdmin);
+        setIsCreator(finalCreator);
       } else {
         setUser(null);
         setProfile(null);

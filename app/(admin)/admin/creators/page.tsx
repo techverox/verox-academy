@@ -6,12 +6,14 @@ import { CreatorApplication } from "@/types/firestore";
 import { Check, X, Eye, Clock, ShieldCheck, AlertCircle, Search, Filter } from "lucide-react";
 
 export default function AdminCreatorsPage() {
-  const { user } = useAuth();
+  const { user, isAdmin, loading: authLoading, refreshClaims } = useAuth();
   const [applications, setApplications] = useState<CreatorApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
+
+  const [selectedApp, setSelectedApp] = useState<CreatorApplication | null>(null);
 
   const fetchApplications = async () => {
     try {
@@ -20,7 +22,12 @@ export default function AdminCreatorsPage() {
         headers: { Authorization: `Bearer ${idToken}` },
       });
       const data = await res.json();
-      setApplications(data);
+      if (Array.isArray(data)) {
+        setApplications(data);
+      } else {
+        setApplications([]);
+        console.error("API did not return an array:", data);
+      }
     } catch (error) {
       console.error("Failed to fetch applications:", error);
     } finally {
@@ -29,8 +36,8 @@ export default function AdminCreatorsPage() {
   };
 
   useEffect(() => {
-    if (user) fetchApplications();
-  }, [user]);
+    if (user && isAdmin) fetchApplications();
+  }, [user, isAdmin]);
 
   const handleApprove = async (applicationId: string) => {
     if (!confirm("Are you sure you want to approve this creator? This will grant them creator privileges.")) return;
@@ -51,6 +58,9 @@ export default function AdminCreatorsPage() {
         setApplications(apps => apps.map(app => 
           app.id === applicationId ? { ...app, status: "approved" as const } : app
         ));
+        if (selectedApp?.id === applicationId) {
+          setSelectedApp(prev => prev ? { ...prev, status: "approved" as const } : null);
+        }
       }
     } catch (error) {
       console.error("Failed to approve creator:", error);
@@ -80,6 +90,9 @@ export default function AdminCreatorsPage() {
         ));
         setShowRejectModal(null);
         setRejectionReason("");
+        if (selectedApp?.id === applicationId) {
+          setSelectedApp(prev => prev ? { ...prev, status: "rejected" as const, rejectionReason } : null);
+        }
       }
     } catch (error) {
       console.error("Failed to reject creator:", error);
@@ -87,6 +100,32 @@ export default function AdminCreatorsPage() {
       setProcessingId(null);
     }
   };
+
+  if (authLoading) return <div className="p-8 text-zinc-500 animate-pulse">Checking credentials...</div>;
+
+  if (!isAdmin) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center">
+        <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mb-6">
+          <AlertCircle className="w-8 h-8" />
+        </div>
+        <h1 className="text-2xl font-black mb-2">Access Denied</h1>
+        <p className="text-zinc-500 max-w-md mb-8">
+          You do not have the required administrative privileges to view this page. 
+          If you were recently granted admin rights, try refreshing your session.
+        </p>
+        <button 
+          onClick={async () => {
+            await refreshClaims();
+            window.location.reload();
+          }}
+          className="px-8 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black rounded-2xl hover:scale-[1.02] transition-all active:scale-95"
+        >
+          REFRESH PERMISSIONS
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -207,6 +246,7 @@ export default function AdminCreatorsPage() {
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button 
+                          onClick={() => setSelectedApp(app)}
                           className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors"
                           title="View Details"
                         >
@@ -243,9 +283,130 @@ export default function AdminCreatorsPage() {
         </div>
       </div>
 
+      {/* Application Details Modal */}
+      {selectedApp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-6 sm:p-8 shadow-2xl my-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-black tracking-tight">Application Details</h2>
+              <button 
+                onClick={() => setSelectedApp(null)}
+                className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Applicant Name</label>
+                  <p className="font-medium text-zinc-900 dark:text-zinc-50">{selectedApp.fullName}</p>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Email Address</label>
+                  <p className="font-medium text-zinc-900 dark:text-zinc-50">{selectedApp.email}</p>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Category</label>
+                  <span className="px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-xs font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400 inline-block">
+                    {selectedApp.category}
+                  </span>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Status</label>
+                  <span className={`text-sm font-bold uppercase tracking-widest ${
+                    selectedApp.status === "pending" ? "text-blue-500" :
+                    selectedApp.status === "approved" ? "text-green-500" : "text-red-500"
+                  }`}>
+                    {selectedApp.status}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Portfolio Link</label>
+                <a href={selectedApp.portfolioUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline font-medium break-all">
+                  {selectedApp.portfolioUrl}
+                </a>
+              </div>
+
+              {selectedApp.socialLinks && Object.keys(selectedApp.socialLinks).length > 0 && (
+                <div>
+                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-2">Social Links</label>
+                  <div className="flex flex-wrap gap-4">
+                    {Object.entries(selectedApp.socialLinks).map(([platform, link]) => link ? (
+                      <a key={platform} href={link as string} target="_blank" rel="noopener noreferrer" className="text-sm font-medium capitalize text-zinc-700 dark:text-zinc-300 hover:text-blue-500 transition-colors">
+                        {platform}
+                      </a>
+                    ) : null)}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-2">Bio / Introduction</label>
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">{selectedApp.bio}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-2">Expertise</label>
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">{selectedApp.expertise}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-2">Sample Course Idea</label>
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">{selectedApp.sampleCourseIdea}</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-2">Why Join Verox Academy?</label>
+                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">{selectedApp.whyJoin}</p>
+                </div>
+              </div>
+
+              {selectedApp.status === "rejected" && selectedApp.rejectionReason && (
+                <div>
+                  <label className="text-xs font-bold text-red-500 uppercase tracking-wider block mb-2">Rejection Reason</label>
+                  <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50">
+                    <p className="text-sm text-red-700 dark:text-red-400 leading-relaxed">{selectedApp.rejectionReason}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {selectedApp.status === "pending" && (
+              <div className="flex gap-3 mt-8 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+                <button 
+                  onClick={() => setShowRejectModal(selectedApp.id)}
+                  disabled={processingId === selectedApp.id}
+                  className="flex-1 py-4 font-bold text-red-500 hover:bg-red-500/10 rounded-2xl transition-all disabled:opacity-50"
+                >
+                  Reject
+                </button>
+                <button 
+                  onClick={() => handleApprove(selectedApp.id)}
+                  disabled={processingId === selectedApp.id}
+                  className="flex-1 py-4 font-black bg-green-500 text-white rounded-2xl hover:bg-green-600 transition-all disabled:opacity-50 active:scale-95"
+                >
+                  Approve Application
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Rejection Modal */}
       {showRejectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
           <div className="w-full max-w-md bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-8 shadow-2xl">
             <h2 className="text-2xl font-black tracking-tight mb-4">Reject Application</h2>
             <p className="text-zinc-500 text-sm mb-6">Please provide a clear reason for rejecting this application. This will be shown to the applicant.</p>

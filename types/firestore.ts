@@ -15,6 +15,7 @@ export type FirestoreTimestamp = FieldValue | { seconds: number; nanoseconds: nu
 // ─── User ───────────────────────────────────────────────────────────────────
 export interface User {
   uid: string;
+  username?: string; // Unique public handle
   email: string;
   name: string | null;
   photoURL: string | null;
@@ -128,6 +129,7 @@ export interface Enrollment {
   totalLessons: number;
   enrolledAt: FirestoreTimestamp;
   completedAt?: FirestoreTimestamp;
+  lastActivityAt?: FirestoreTimestamp;
   /** Payment ID that created this enrollment (source of truth) */
   paymentId?: string;
 }
@@ -299,13 +301,46 @@ export interface Coupon {
   createdAt: FirestoreTimestamp;
 }
 
-// ─── Coupon Usage ──────────────────────────────────────────────────────────
-export interface CouponUsage {
+// ─── Article (Blog Engine) ──────────────────────────────────────────────────
+export interface Article {
   id: string;
-  couponId: string;
-  userId: string;
-  courseId: string;
-  orderId: string;
-  discountAmount: number; // in paise
-  usedAt: FirestoreTimestamp;
+  slug: string;
+  title: string;
+  content: string; // Markdown content
+  excerpt: string;
+  coverImage: string;
+  authorId: string;
+  authorName: string;
+  authorPhoto: string | null;
+  tags: string[];
+  category: string;
+  published: boolean;
+  readingTime?: number; // in minutes
+  featured: boolean;
+  viewCount: number;
+  createdAt: FirestoreTimestamp;
+  updatedAt: FirestoreTimestamp;
+  publishedAt?: FirestoreTimestamp;
+}
+
+// ─── Referral (Growth System) ────────────────────────────────────────────────
+export interface Referral {
+  id: string; // The referral code
+  userId: string; // Owner of the code
+  totalClicks: number;
+  totalSignups: number;
+  totalConversions: number; // Number of purchases made
+  totalEarnings: number; // in paise
+  createdAt: FirestoreTimestamp;
+}
+
+export interface ReferralLog {
+  id: string;
+  referralCode: string;
+  referrerId: string;
+  referredUserId?: string;
+  type: "signup" | "purchase";
+  courseId?: string; // If type is purchase
+  rewardAmount?: number; // in paise
+  timestamp: FirestoreTimestamp;
 }

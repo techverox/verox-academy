@@ -188,9 +188,23 @@ export async function POST(req: NextRequest) {
       currency: order.currency,
       courseTitle: course.title,
     });
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
+  } catch (error: any) {
+    let message = "Unknown error";
+    
+    // Razorpay often throws objects that aren't instances of Error
+    if (error instanceof Error) {
+      message = error.message;
+    } else if (error?.error?.description) {
+      message = error.error.description;
+    } else if (typeof error === 'object') {
+      message = JSON.stringify(error);
+    } else {
+      message = String(error);
+    }
+    
+    console.error("[RAZORPAY] Order creation error Payload:", error);
     console.error("[RAZORPAY] Order creation error:", message);
+    
     return NextResponse.json(
       { error: "Failed to create payment order", details: message },
       { status: 500 }

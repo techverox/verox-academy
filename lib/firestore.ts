@@ -14,11 +14,12 @@
  * - Admin stats should eventually read from aggregation collections
  */
 
-import { User, Course, Lesson, Enrollment, LessonProgress, CreatorApplication, Certificate, Resource, Quiz, Question, QuizAttempt, Review } from "@/types/firestore";
+import { User, Course, Lesson, Enrollment, LessonProgress, CreatorApplication, Certificate, Resource, Quiz, Question, QuizAttempt, Review, CreatorStats, PayoutRequest } from "@/types/firestore";
 import { 
   doc, 
   getDoc, 
   setDoc, 
+  updateDoc,
   collection, 
   getDocs, 
   query, 
@@ -285,7 +286,8 @@ export const markLessonComplete = async (
       completedLessons: newCompletedCount,
       progress: newProgress,
       status: isFinished ? "completed" : "active",
-      completedAt: isFinished ? serverTimestamp() : (enrollmentData.completedAt || null)
+      completedAt: isFinished ? serverTimestamp() : (enrollmentData.completedAt || null),
+      lastActivityAt: serverTimestamp()
     });
 
     // ─── Trigger Review Reminder at 50% ──────────────────────────

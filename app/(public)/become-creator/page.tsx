@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { submitCreatorApplication, getCreatorApplicationStatus } from "@/lib/firestore";
 import { CreatorApplication } from "@/types/firestore";
-import { CheckCircle2, AlertCircle, Rocket, Users, Target, ShieldCheck, Instagram, Twitter, Youtube, Linkedin, Globe } from "lucide-react";
+import { CheckCircle2, AlertCircle, Rocket, Users, Target, ShieldCheck, Camera, Send, Video, Briefcase, Globe } from "lucide-react";
 
 export default function BecomeCreatorPage() {
   const { user, profile, loading, isCreator } = useAuth();
@@ -313,7 +313,7 @@ export default function BecomeCreatorPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 mb-2">
-                    <Twitter className="w-4 h-4 text-zinc-500" />
+                    <Send className="w-4 h-4 text-zinc-500" />
                     <label className="text-xs font-black uppercase tracking-widest text-zinc-500">Twitter URL</label>
                   </div>
                   <input 
@@ -326,7 +326,7 @@ export default function BecomeCreatorPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 mb-2">
-                    <Linkedin className="w-4 h-4 text-zinc-500" />
+                    <Briefcase className="w-4 h-4 text-zinc-500" />
                     <label className="text-xs font-black uppercase tracking-widest text-zinc-500">LinkedIn URL</label>
                   </div>
                   <input 
@@ -339,7 +339,7 @@ export default function BecomeCreatorPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 mb-2">
-                    <Youtube className="w-4 h-4 text-zinc-500" />
+                    <Video className="w-4 h-4 text-zinc-500" />
                     <label className="text-xs font-black uppercase tracking-widest text-zinc-500">YouTube URL</label>
                   </div>
                   <input 
