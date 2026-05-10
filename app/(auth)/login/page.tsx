@@ -1,14 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { 
+  signInWithPopup, 
+  GoogleAuthProvider, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword 
+} from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { createUserIfNotExists } from "@/lib/firestore";
+import { Button } from "@/components/ui/Button";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const { user, profile, loading: authLoading } = useAuth();
@@ -48,12 +57,36 @@ export default function LoginPage() {
         name: firebaseUser.displayName,
         photoURL: firebaseUser.photoURL,
       });
-
-      // Redirection is handled by the useEffect based on the user's role profile.
     } catch (err: unknown) {
       console.error(err);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       setError((err as any).message || "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      let result;
+      if (isSignUp) {
+        result = await createUserWithEmailAndPassword(auth, email, password);
+        // Create user document in Firestore for new signups
+        await createUserIfNotExists({
+          uid: result.user.uid,
+          email: result.user.email || "",
+          name: email.split("@")[0], // Default name from email
+          role: "student",
+        });
+      } else {
+        result = await signInWithEmailAndPassword(auth, email, password);
+      }
+    } catch (err: unknown) {
+      console.error(err);
+      setError((err as any).message || "Authentication failed. Please check your credentials.");
     } finally {
       setLoading(false);
     }
@@ -67,16 +100,54 @@ export default function LoginPage() {
             Verox Academy
           </h1>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            Sign in to access your courses and dashboard
+            {isSignUp ? "Create an account to start learning" : "Sign in to access your courses and dashboard"}
           </p>
         </div>
 
-        <div className="mt-8 space-y-4">
+        <div className="mt-8 space-y-6">
           {error && (
             <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">
               {error}
             </div>
           )}
+
+          <form onSubmit={handleEmailAuth} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Email Address</label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="mt-1 block w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-50 dark:focus:ring-zinc-50"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Password</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="mt-1 block w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-50 dark:focus:ring-zinc-50"
+              />
+            </div>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full py-6 text-base font-bold shadow-lg shadow-purple-500/20"
+            >
+              {loading ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}
+            </Button>
+          </form>
+
+          <div className="relative flex items-center py-4">
+            <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800"></div>
+            <span className="mx-4 flex-shrink text-xs font-medium uppercase text-zinc-400 dark:text-zinc-600">Or continue with</span>
+            <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800"></div>
+          </div>
 
           <button
             onClick={handleGoogleLogin}
@@ -105,8 +176,17 @@ export default function LoginPage() {
                 />
               </svg>
             )}
-            {loading ? "Signing in..." : "Continue with Google"}
+            Google
           </button>
+          
+          <div className="text-center text-sm">
+            <button 
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            >
+              {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
+            </button>
+          </div>
         </div>
 
         <p className="mt-8 text-center text-xs text-zinc-500 dark:text-zinc-600">
