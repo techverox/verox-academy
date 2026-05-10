@@ -139,7 +139,7 @@ export default function CreatorPayoutsPage() {
                   {history.map((payout) => (
                     <tr key={payout.id} className="group hover:bg-zinc-800/30 transition-colors">
                       <td className="px-8 py-6 text-sm font-bold text-zinc-300">
-                        {new Date(payout.requestedAt.seconds * 1000).toLocaleDateString()}
+                        {new Date(((payout.requestedAt as any)._seconds || (payout.requestedAt as any).seconds || 0) * 1000).toLocaleDateString()}
                       </td>
                       <td className="px-8 py-6 text-sm font-black text-white">
                         {formatCurrency(payout.amount)}

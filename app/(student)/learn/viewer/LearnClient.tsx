@@ -14,6 +14,7 @@ import {
   Menu, 
   CheckCircle2, 
   Play, 
+  PlayCircle,
   ChevronRight, 
   ArrowLeft,
   Files,
@@ -352,7 +353,7 @@ function LearnViewerContent() {
                          </p>
                        )}
                     </div>
-                  ) : (
+                  ) : activeTab === "resources" ? (
                     <div className="space-y-4">
                       {resourcesLoading ? (
                         <div className="flex items-center justify-center py-12">
@@ -408,7 +409,7 @@ function LearnViewerContent() {
                                   </div>
                                </div>
                                {latestAttempt && (
-                                 <Badge variant={latestAttempt.passed ? "success" : "destructive"} className="h-10 px-4 rounded-xl">
+                                 <Badge variant={latestAttempt.passed ? "success" : "danger"} className="h-10 px-4 rounded-xl">
                                     Last Score: {latestAttempt.score}%
                                  </Badge>
                                )}

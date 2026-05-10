@@ -127,7 +127,7 @@ export default function AdminPayoutsPage() {
                       <div className="flex flex-col">
                         <span className="font-bold text-zinc-900 dark:text-zinc-50 text-sm">{req.creatorId}</span>
                         <span className="text-[10px] text-zinc-400 uppercase tracking-widest font-black mt-1">
-                          {new Date(req.requestedAt.seconds * 1000).toLocaleDateString()}
+                          {new Date(((req.requestedAt as any)._seconds || (req.requestedAt as any).seconds || 0) * 1000).toLocaleDateString()}
                         </span>
                       </div>
                     </td>

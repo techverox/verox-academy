@@ -12,7 +12,8 @@ import {
   Trophy, 
   ArrowRight,
   Sparkles,
-  Search
+  Search,
+  Award
 } from "lucide-react";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Card } from "@/components/ui/Card";
@@ -135,7 +136,7 @@ export default function DashboardPage() {
           value={completedCourses.length} 
           icon={Trophy} 
           trend={completedCourses.length > 0 ? "Well done!" : "Keep going"} 
-          trendType={completedCourses.length > 0 ? "positive" : "neutral"}
+          trendType={completedCourses.length > 0 ? "positive" : undefined}
         />
         <StatsCard 
           title="Total Lessons" 
@@ -151,7 +152,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
               In Progress
-              <Badge variant="secondary" className="bg-white/5 border-white/10">{inProgressCourses.length}</Badge>
+              <Badge variant="outline" className="bg-white/5 border-white/10">{inProgressCourses.length}</Badge>
             </h3>
           </div>
 
