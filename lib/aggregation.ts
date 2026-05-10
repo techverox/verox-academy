@@ -140,6 +140,32 @@ export async function getCourseStatsById(courseId: string): Promise<{
   };
 }
 
+// ─── Creator Stats ──────────────────────────────────────────────────────────
+/**
+ * Increment per-creator counters atomically.
+ * Called after successful enrollment/payment.
+ */
+export async function incrementCreatorStats(
+  creatorId: string,
+  increments: Partial<Record<"totalCourses" | "totalStudents" | "totalEnrollments" | "totalRevenue" | "pendingRevenue" | "paidRevenue" | "watchHours", number>>
+): Promise<void> {
+  const db = getAdminDb();
+  const statsRef = db.doc(`creatorStats/${creatorId}`);
+
+  const updateData: Record<string, FieldValue | Date | string> = {
+    creatorId,
+    lastUpdated: FieldValue.serverTimestamp(),
+  };
+
+  for (const [key, value] of Object.entries(increments)) {
+    if (value && value !== 0) {
+      updateData[key] = FieldValue.increment(value);
+    }
+  }
+
+  await statsRef.set(updateData, { merge: true });
+}
+
 // ─── Initialization Helper ─────────────────────────────────────────────────
 
 /**

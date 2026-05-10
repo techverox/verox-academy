@@ -18,7 +18,7 @@ export interface User {
   email: string;
   name: string | null;
   photoURL: string | null;
-  role: "student" | "admin";
+  role: "student" | "creator" | "admin";
   verified: boolean;
   createdAt: FirestoreTimestamp;
   lastLogin: FirestoreTimestamp;
@@ -32,6 +32,11 @@ export interface Course {
   thumbnail: string;
   price: number;
   instructorId: string;
+  // Creator Info (Denormalized for performance)
+  creatorId: string;
+  creatorName: string | null;
+  creatorPhoto: string | null;
+  creatorEmail: string | null;
   lessonCount: number;
   published: boolean;
   createdAt: FirestoreTimestamp;
@@ -92,6 +97,11 @@ export interface Payment {
   amount: number; // in paise (smallest currency unit)
   currency: string;
   status: PaymentStatus;
+  /** Revenue breakdown */
+  platformFee: number; // in paise (e.g. 20%)
+  creatorRevenue: number; // in paise (e.g. 80%)
+  creatorId: string;
+  payoutStatus: "pending" | "paid" | "n/a";
   /** Razorpay signature for verification */
   signature?: string;
   createdAt: FirestoreTimestamp;
@@ -101,6 +111,47 @@ export interface Payment {
     courseTitle?: string;
     userEmail?: string;
     webhookEventId?: string;
+  };
+}
+
+// ─── Creator Application ────────────────────────────────────────────────────
+export interface CreatorApplication {
+  id: string;
+  userId: string;
+  fullName: string;
+  email: string;
+  bio: string;
+  expertise: string;
+  category: string;
+  socialLinks: {
+    twitter?: string;
+    linkedin?: string;
+    youtube?: string;
+    instagram?: string;
+  };
+  portfolioUrl: string;
+  sampleCourseIdea: string;
+  whyJoin: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: FirestoreTimestamp;
+  reviewedAt?: FirestoreTimestamp;
+  reviewedBy?: string; // admin userId
+  rejectionReason?: string;
+}
+
+// ─── Payout Request ─────────────────────────────────────────────────────────
+export interface PayoutRequest {
+  id: string;
+  creatorId: string;
+  amount: number; // in paise
+  status: "pending" | "approved" | "rejected" | "paid";
+  requestedAt: FirestoreTimestamp;
+  processedAt?: FirestoreTimestamp;
+  processedBy?: string; // admin userId
+  notes?: string;
+  paymentMethod?: {
+    type: "upi" | "bank";
+    details: string;
   };
 }
 
@@ -114,6 +165,20 @@ export interface PlatformStats {
   totalLessons: number;
   totalRevenue: number; // in paise
   totalPayments: number;
+  lastUpdated: FirestoreTimestamp;
+}
+
+// ─── Aggregation: Creator Stats ─────────────────────────────────────────────
+// Per-creator aggregated metrics. Stored in `creatorStats/{creatorId}`.
+export interface CreatorStats {
+  creatorId: string;
+  totalCourses: number;
+  totalStudents: number;
+  totalEnrollments: number;
+  totalRevenue: number; // in paise
+  pendingRevenue: number; // in paise (unpaid earnings)
+  paidRevenue: number; // in paise (withdrawn earnings)
+  watchHours: number;
   lastUpdated: FirestoreTimestamp;
 }
 

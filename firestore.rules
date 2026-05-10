@@ -27,9 +27,21 @@ service cloud.firestore {
       );
     }
 
+    function isCreator() {
+      return isAuthenticated() && (
+        request.auth.token.creator == true ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'student') == 'creator')
+      );
+    }
+
     // Check if a user is enrolled in a specific course
     function isEnrolledInCourse(userId, courseId) {
       return exists(/databases/$(database)/documents/enrollments/$(userId + "_" + courseId));
+    }
+
+    function isCourseOwner(courseId) {
+      return isAdmin() || (isCreator() && get(/databases/$(database)/documents/courses/$(courseId)).data.creatorId == request.auth.uid);
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -38,7 +50,7 @@ service cloud.firestore {
 
     // USERS
     match /users/{userId} {
-      // Public profiles (read-only for name, photo, etc.)
+      // Public profiles
       allow read: if true;
       // Users can create/update their own profile
       allow create, update: if isOwner(userId);
@@ -50,90 +62,99 @@ service cloud.firestore {
 
     // COURSES
     match /courses/{courseId} {
-      // Public can read published courses. Admin can read all.
-      // Enrolled students can also read unpublished courses (for ongoing access).
+      // Public can read published courses. Admin/Creator can read all.
       allow read: if (resource.data.published == true) || 
                      isAdmin() || 
+                     (isCreator() && resource.data.creatorId == request.auth.uid) ||
                      (isAuthenticated() && isEnrolledInCourse(request.auth.uid, courseId));
-      // Only admins can create/update/delete courses
-      allow write: if isAdmin();
+      // Admins can write all. Creators can write their own.
+      allow create: if isAdmin() || isCreator();
+      allow update, delete: if isAdmin() || (isCreator() && resource.data.creatorId == request.auth.uid);
     }
 
     // LESSONS
-    // SECURITY: Lessons are no longer publicly readable.
-    // Only enrolled users, admins, or users viewing free preview lessons can read.
     match /lessons/{lessonId} {
       allow read: if isAdmin() || 
                      (isAuthenticated() && 
                       resource.data.courseId != null && 
-                      isEnrolledInCourse(request.auth.uid, resource.data.courseId)) ||
+                      (isEnrolledInCourse(request.auth.uid, resource.data.courseId) ||
+                       isCourseOwner(resource.data.courseId))) ||
                      (resource.data.isPreviewFree == true);
-      allow write: if isAdmin();
+      allow create: if isAdmin() || (isCreator() && request.resource.data.courseId != null && get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.creatorId == request.auth.uid);
+      allow update, delete: if isAdmin() || (isCreator() && resource.data.courseId != null && get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.creatorId == request.auth.uid);
     }
 
     // ENROLLMENTS
-    // SECURITY: Enrollments can only be created server-side (via webhook/verify API).
-    // Client-side enrollment creation is blocked.
     match /enrollments/{enrollmentId} {
-      // Users can read their own enrollments, admins can read all
+      // Users read own, admins read all, creators read for their courses
       allow read: if isAuthenticated() && (
         request.auth.uid == enrollmentId.split('_')[0] || 
-        (resource != null && request.auth.uid == resource.data.userId) || 
+        (resource != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.creatorId == request.auth.uid)) || 
         isAdmin()
       );
-      // SECURITY: Only server-side (admin SDK) can create enrollments.
-      // This prevents the free enrollment bypass vulnerability.
-      allow create: if isAdmin();
-      // Users can update their own enrollment progress
+      allow create: if isAdmin(); // Server-side only
       allow update: if isAuthenticated() && (request.auth.uid == resource.data.userId) || isAdmin();
       allow delete: if isAdmin();
     }
 
     // LESSON PROGRESS
     match /lessonProgress/{progressId} {
-      // Users can read their own progress
       allow read: if isAuthenticated() && (
         request.auth.uid == progressId.split('_')[0] || 
-        (resource != null && request.auth.uid == resource.data.userId) || 
+        (resource != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.creatorId == request.auth.uid)) || 
         isAdmin()
       );
-      // Users can create/update their own progress
       allow create: if isAuthenticated() && (request.auth.uid == request.resource.data.userId);
       allow update: if isAuthenticated() && (request.auth.uid == resource.data.userId) || isAdmin();
       allow delete: if isAdmin();
     }
 
     // PAYMENTS
-    // SECURITY: Payment records are server-write only.
-    // Clients can read their own payment records for display purposes.
     match /payments/{paymentId} {
       allow read: if isAuthenticated() && (
-        (resource != null && request.auth.uid == resource.data.userId) || 
+        (resource != null && (request.auth.uid == resource.data.userId || resource.data.creatorId == request.auth.uid)) || 
         isAdmin()
       );
-      // No client-side writes allowed — payments are created by API routes only
+      allow write: if false; // Server-side only
+    }
+
+    // CREATOR APPLICATIONS
+    match /creatorApplications/{appId} {
+      allow read: if isAdmin() || (isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid));
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // PAYOUT REQUESTS
+    match /payoutRequests/{requestId} {
+      allow read: if isAdmin() || (isCreator() && (resource == null || resource.data.creatorId == request.auth.uid));
+      allow create: if isCreator() && request.resource.data.creatorId == request.auth.uid;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // PLATFORM STATS
+    match /platformStats/{docId} {
+      allow read: if isAdmin();
       allow write: if false;
     }
 
-    // PLATFORM STATS (Aggregation Collection)
-    // Server-write only. Anyone authenticated can read (for dashboard).
-    match /platformStats/{docId} {
-      allow read: if isAdmin();
-      allow write: if false; // Server-side only (Admin SDK)
+    // CREATOR STATS
+    match /creatorStats/{creatorId} {
+      allow read: if isAdmin() || (isCreator() && request.auth.uid == creatorId);
+      allow write: if false;
     }
 
-    // COURSE STATS (Aggregation Collection)
-    // Server-write only. Admins can read.
+    // COURSE STATS
     match /courseStats/{courseId} {
-      allow read: if isAdmin();
-      allow write: if false; // Server-side only (Admin SDK)
+      allow read: if isAdmin() || (isCreator() && get(/databases/$(database)/documents/courses/$(courseId)).data.creatorId == request.auth.uid);
+      allow write: if false;
     }
 
     // ADMIN AUDIT LOG
-    // Server-write only. Admins can read for audit purposes.
     match /adminAuditLog/{logId} {
       allow read: if isAdmin();
-      allow write: if false; // Server-side only (Admin SDK)
+      allow write: if false;
     }
   }
 }

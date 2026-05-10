@@ -8,13 +8,14 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
 export default function Navbar() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isCreator } = useAuth();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Hide global navbar on dashboard, learn, and admin routes
+  // Hide global navbar on dashboard, learn, and admin/creator routes
   const isDashboard = pathname?.startsWith("/dashboard") || 
                       pathname?.startsWith("/admin") || 
+                      pathname?.startsWith("/creator") ||
                       pathname?.startsWith("/learn") || 
                       pathname?.startsWith("/settings") || 
                       pathname?.startsWith("/certificates") || 
@@ -28,6 +29,7 @@ export default function Navbar() {
     { name: "Courses", href: "/courses/" },
     { name: "Pricing", href: "/#pricing" },
     ...(isAdmin ? [{ name: "Admin Dashboard", href: "/admin/" }] : []),
+    ...(isCreator && !isAdmin ? [{ name: "Creator Studio", href: "/creator/" }] : []),
   ];
 
   const isActive = (href: string) => pathname === href;
@@ -82,6 +84,13 @@ export default function Navbar() {
                       className="rounded-full bg-red-600 px-6 py-2.5 text-sm font-black uppercase tracking-widest text-white transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-500/20"
                     >
                       Go to Admin
+                    </Link>
+                  ) : isCreator ? (
+                    <Link
+                      href="/creator/"
+                      className="rounded-full bg-primary px-6 py-2.5 text-sm font-black uppercase tracking-widest text-black transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/20"
+                    >
+                      Creator Studio
                     </Link>
                   ) : (
                     <Link

@@ -90,6 +90,10 @@ export async function POST(req: NextRequest) {
     // Convert price from rupees to paise (Razorpay expects paise)
     const amountInPaise = Math.round(course.price * 100);
 
+    // REVENUE BREAKDOWN (80/20 Split)
+    const platformFee = Math.round(amountInPaise * 0.2);
+    const creatorRevenue = amountInPaise - platformFee;
+
     const order = await razorpay.orders.create({
       amount: amountInPaise,
       currency: "INR",
@@ -99,6 +103,7 @@ export async function POST(req: NextRequest) {
         userId,
         courseTitle: course.title,
         userEmail: decodedToken.email || "",
+        creatorId: course.creatorId || "admin",
       },
     });
 
@@ -114,6 +119,11 @@ export async function POST(req: NextRequest) {
       amount: amountInPaise,
       currency: "INR",
       status: "created",
+      // Revenue tracking
+      platformFee,
+      creatorRevenue,
+      creatorId: course.creatorId || "admin",
+      payoutStatus: course.creatorId === "admin" ? "n/a" : "pending",
       createdAt: FieldValue.serverTimestamp(),
       metadata: {
         courseTitle: course.title,

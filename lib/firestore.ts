@@ -14,7 +14,7 @@
  * - Admin stats should eventually read from aggregation collections
  */
 
-import { User, Course, Lesson, Enrollment, LessonProgress } from "@/types/firestore";
+import { User, Course, Lesson, Enrollment, LessonProgress, CreatorApplication } from "@/types/firestore";
 import { 
   doc, 
   getDoc, 
@@ -24,9 +24,41 @@ import {
   query, 
   where, 
   orderBy,
+  limit,
   serverTimestamp 
 } from "firebase/firestore";
 import { db } from "./firebase";
+
+// ─── Creator Economy Operations ─────────────────────────────────────────────
+
+/**
+ * Submits a new creator application.
+ */
+export const submitCreatorApplication = async (application: Omit<CreatorApplication, "id" | "status" | "createdAt">) => {
+  const applicationsRef = collection(db, "creatorApplications");
+  const newAppRef = doc(applicationsRef);
+  
+  const newApp: Omit<CreatorApplication, "id"> = {
+    ...application,
+    status: "pending",
+    createdAt: serverTimestamp(),
+  };
+
+  await setDoc(newAppRef, newApp);
+  return newAppRef.id;
+};
+
+/**
+ * Fetches the status of a user's creator application.
+ */
+export const getCreatorApplicationStatus = async (userId: string): Promise<CreatorApplication | null> => {
+  const applicationsRef = collection(db, "creatorApplications");
+  const q = query(applicationsRef, where("userId", "==", userId), orderBy("createdAt", "desc"), limit(1));
+  const querySnapshot = await getDocs(q);
+  
+  if (querySnapshot.empty) return null;
+  return { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as CreatorApplication;
+};
 
 // ─── User Operations ────────────────────────────────────────────────────────
 
@@ -332,9 +364,23 @@ export const getAllCoursesAdmin = async (): Promise<Course[]> => {
 };
 
 /**
+ * CMS: Fetches courses for a specific creator.
+ */
+export const getCoursesByCreator = async (creatorId: string): Promise<Course[]> => {
+  const coursesRef = collection(db, "courses");
+  const q = query(coursesRef, where("creatorId", "==", creatorId), orderBy("createdAt", "desc"));
+  const querySnapshot = await getDocs(q);
+  
+  return querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  } as Course));
+};
+
+/**
  * CMS: Creates a new course.
  */
-export const adminCreateCourse = async (courseData: Partial<Course>): Promise<string> => {
+export const adminCreateCourse = async (courseData: Partial<Course>, creator?: User): Promise<string> => {
   const coursesRef = collection(db, "courses");
   const newCourseRef = doc(coursesRef);
   
@@ -343,7 +389,12 @@ export const adminCreateCourse = async (courseData: Partial<Course>): Promise<st
     description: courseData.description || "",
     thumbnail: courseData.thumbnail || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3",
     price: Number(courseData.price) || 0,
-    instructorId: courseData.instructorId || "admin",
+    instructorId: creator?.uid || "admin",
+    // Creator Info
+    creatorId: creator?.uid || "admin",
+    creatorName: creator?.name || "Verox Academy",
+    creatorPhoto: creator?.photoURL || null,
+    creatorEmail: creator?.email || null,
     lessonCount: 0,
     published: courseData.published || false,
     createdAt: serverTimestamp(),
@@ -455,4 +506,101 @@ export const adminDuplicateLesson = async (lesson: Lesson) => {
   
   await setDoc(newLessonRef, newLesson);
   return newLessonRef.id;
+};
+/**
+ * Fetches aggregated stats for a creator.
+ */
+export const getCreatorStats = async (creatorId: string): Promise<CreatorStats | null> => {
+  const statsRef = doc(db, "creatorStats", creatorId);
+  const statsSnap = await getDoc(statsRef);
+  
+  if (statsSnap.exists()) {
+    return statsSnap.data() as CreatorStats;
+  }
+  
+  // Return default stats if collection doesn't exist yet
+  return {
+    creatorId,
+    totalCourses: 0,
+    totalStudents: 0,
+    totalEnrollments: 0,
+    totalRevenue: 0,
+    pendingRevenue: 0,
+    paidRevenue: 0,
+    watchHours: 0,
+    lastUpdated: serverTimestamp() as any
+  };
+};
+
+/**
+ * Fetches recent enrollments for a creator's courses.
+ */
+export const getCreatorRecentEnrollments = async (creatorId: string, limitCount = 5) => {
+  // 1. Get creator's course IDs
+  const coursesRef = collection(db, "courses");
+  const coursesQuery = query(coursesRef, where("creatorId", "==", creatorId));
+  const coursesSnap = await getDocs(coursesQuery);
+  const courseIds = coursesSnap.docs.map(doc => doc.id);
+
+  if (courseIds.length === 0) return [];
+
+  // 2. Get enrollments for these courses
+  const enrollmentsRef = collection(db, "enrollments");
+  const enrollmentsQuery = query(
+    enrollmentsRef, 
+    where("courseId", "in", courseIds.slice(0, 10)), // Firestore 'in' limit is 10
+    orderBy("enrolledAt", "desc"),
+    limit(limitCount)
+  );
+  
+  const enrollmentsSnap = await getDocs(enrollmentsQuery);
+  
+  // 3. Join with course and user info
+  const results = await Promise.all(enrollmentsSnap.docs.map(async (enrDoc) => {
+    const data = enrDoc.data() as Enrollment;
+    const course = coursesSnap.docs.find(d => d.id === data.courseId)?.data() as Course;
+    
+    const userRef = doc(db, "users", data.userId);
+    const userSnap = await getDoc(userRef);
+    const userData = userSnap.exists() ? userSnap.data() as User : null;
+
+    return {
+      id: enrDoc.id,
+      courseTitle: course?.title || "Unknown Course",
+      studentName: userData?.name || "Anonymous Student",
+      enrolledAt: data.enrolledAt
+    };
+  }));
+
+  return results;
+};
+
+/**
+ * Submits a new payout request.
+ */
+export const requestPayout = async (creatorId: string, amount: number, paymentMethod: any) => {
+  const payoutsRef = collection(db, "payoutRequests");
+  const newPayoutRef = doc(payoutsRef);
+  
+  const newPayout: Omit<PayoutRequest, "id"> = {
+    creatorId,
+    amount,
+    status: "pending",
+    requestedAt: serverTimestamp() as any,
+    paymentMethod
+  };
+
+  await setDoc(newPayoutRef, newPayout);
+  return newPayoutRef.id;
+};
+
+/**
+ * Fetches payout history for a creator.
+ */
+export const getPayoutHistory = async (creatorId: string): Promise<PayoutRequest[]> => {
+  const payoutsRef = collection(db, "payoutRequests");
+  const q = query(payoutsRef, where("creatorId", "==", creatorId), orderBy("requestedAt", "desc"));
+  const querySnapshot = await getDocs(q);
+  
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PayoutRequest));
 };

@@ -12,9 +12,95 @@
  * to enable SSR data fetching, better SEO, and smaller JS bundles.
  */
 
-import { getAdminDb } from "./firebase-admin";
-import { Course, Lesson, Payment, Enrollment } from "@/types/firestore";
+import { Course, Lesson, Payment, Enrollment, CreatorApplication, User } from "@/types/firestore";
+import { getAdminDb, getAdminAuth } from "./firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
+
+/**
+ * Fetch all creator applications.
+ */
+export async function getCreatorApplicationsServer(): Promise<CreatorApplication[]> {
+  const db = getAdminDb();
+  const snapshot = await db.collection("creatorApplications").orderBy("createdAt", "desc").get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as CreatorApplication[];
+}
+
+/**
+ * Approve a creator application.
+ * - Sets custom claim 'creator: true'
+ * - Updates user role to 'creator' in Firestore
+ * - Updates application status to 'approved'
+ * - Logs action in adminAuditLog
+ */
+export async function approveCreatorServer(applicationId: string, adminId: string): Promise<void> {
+  const db = getAdminDb();
+  const auth = getAdminAuth();
+
+  const appRef = db.collection("creatorApplications").doc(applicationId);
+  const appSnap = await appRef.get();
+  
+  if (!appSnap.exists) throw new Error("Application not found");
+  const appData = appSnap.data() as CreatorApplication;
+
+  // 1. Set Custom Claims
+  const userRef = db.collection("users").doc(appData.userId);
+  const userSnap = await userRef.get();
+  const existingClaims = (await auth.getUser(appData.userId)).customClaims || {};
+  
+  await auth.setCustomUserClaims(appData.userId, {
+    ...existingClaims,
+    creator: true
+  });
+
+  // 2. Update Firestore Role
+  await userRef.update({
+    role: "creator"
+  });
+
+  // 3. Update Application Status
+  await appRef.update({
+    status: "approved",
+    reviewedAt: FieldValue.serverTimestamp(),
+    reviewedBy: adminId
+  });
+
+  // 4. Log Audit
+  await db.collection("adminAuditLog").add({
+    action: "APPROVE_CREATOR",
+    targetUserId: appData.userId,
+    applicationId: applicationId,
+    performedBy: adminId,
+    timestamp: FieldValue.serverTimestamp()
+  });
+}
+
+/**
+ * Reject a creator application.
+ */
+export async function rejectCreatorServer(applicationId: string, reason: string, adminId: string): Promise<void> {
+  const db = getAdminDb();
+  const appRef = db.collection("creatorApplications").doc(applicationId);
+  
+  await appRef.update({
+    status: "rejected",
+    rejectionReason: reason,
+    reviewedAt: FieldValue.serverTimestamp(),
+    reviewedBy: adminId
+  });
+
+  // Log Audit
+  const appSnap = await appRef.get();
+  const appData = appSnap.data() as CreatorApplication;
+
+  await db.collection("adminAuditLog").add({
+    action: "REJECT_CREATOR",
+    targetUserId: appData?.userId,
+    applicationId: applicationId,
+    performedBy: adminId,
+    timestamp: FieldValue.serverTimestamp(),
+    reason
+  });
+}
 
 // ─── Course Queries ─────────────────────────────────────────────────────────
 

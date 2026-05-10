@@ -76,18 +76,77 @@ export async function verifyAdminToken(
 }
 
 /**
- * Set admin custom claims on a Firebase user.
- * This should only be callable by existing admins.
+ * Verify a Firebase ID token AND check for creator custom claim.
+ * Returns the decoded token only if `token.creator === true` or `token.admin === true`.
  *
- * @param uid - The Firebase user ID to grant admin access
- * @param isAdmin - Whether to grant or revoke admin status
+ * @param request - The incoming NextRequest
+ * @returns DecodedIdToken or null
+ */
+export async function verifyCreatorToken(
+  request: NextRequest
+): Promise<DecodedIdToken | null> {
+  const decodedToken = await verifyAuthToken(request);
+
+  if (!decodedToken) {
+    return null;
+  }
+
+  // SECURITY: Check custom claim. Admins also have creator access.
+  if (decodedToken.creator !== true && decodedToken.admin !== true) {
+    console.warn(
+      `[AUTH] Non-creator user ${decodedToken.uid} attempted creator access`
+    );
+    return null;
+  }
+
+  return decodedToken;
+}
+
+/**
+ * Set creator custom claims on a Firebase user.
+ * This should only be callable by admins.
+ *
+ * @param uid - The Firebase user ID to grant creator access
+ * @param isCreator - Whether to grant or revoke creator status
+ */
+export async function setCreatorClaim(
+  uid: string,
+  isCreator: boolean
+): Promise<void> {
+  const auth = getAdminAuth();
+  
+  // We want to preserve admin claim if it exists
+  const user = await auth.getUser(uid);
+  const existingClaims = user.customClaims || {};
+  
+  await auth.setCustomUserClaims(uid, { 
+    ...existingClaims,
+    creator: isCreator 
+  });
+  
+  console.log(
+    `[AUTH] Creator claim ${isCreator ? "granted" : "revoked"} for user ${uid}`
+  );
+}
+
+/**
+ * Set admin custom claims on a Firebase user.
  */
 export async function setAdminClaim(
   uid: string,
   isAdmin: boolean
 ): Promise<void> {
   const auth = getAdminAuth();
-  await auth.setCustomUserClaims(uid, { admin: isAdmin });
+  
+  // We want to preserve creator claim if it exists
+  const user = await auth.getUser(uid);
+  const existingClaims = user.customClaims || {};
+
+  await auth.setCustomUserClaims(uid, { 
+    ...existingClaims,
+    admin: isAdmin 
+  });
+  
   console.log(
     `[AUTH] Admin claim ${isAdmin ? "granted" : "revoked"} for user ${uid}`
   );

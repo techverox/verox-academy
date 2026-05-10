@@ -32,6 +32,7 @@ import {
 import {
   incrementPlatformStats,
   incrementCourseStats,
+  incrementCreatorStats,
 } from "@/lib/aggregation";
 import { FieldValue } from "firebase-admin/firestore";
 
@@ -146,6 +147,12 @@ export async function POST(req: NextRequest) {
           incrementCourseStats(courseId, {
             totalEnrollments: 1,
             totalRevenue: paymentData.amount,
+          }),
+          incrementCreatorStats(paymentData.creatorId || "admin", {
+            totalEnrollments: 1,
+            totalRevenue: paymentData.creatorRevenue || 0,
+            pendingRevenue: paymentData.creatorRevenue || 0,
+            totalStudents: 1,
           }),
         ]);
       }
