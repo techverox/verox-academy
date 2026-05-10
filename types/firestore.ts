@@ -266,3 +266,46 @@ export interface CourseStats {
   avgProgress: number; // 0-100
   lastUpdated: FirestoreTimestamp;
 }
+
+// ─── Email Log ──────────────────────────────────────────────────────────────
+// Tracking sent emails for reliability and audit trail.
+export interface EmailLog {
+  id: string;
+  recipientEmail: string;
+  recipientId?: string;
+  template: string;
+  status: "sent" | "failed" | "retrying";
+  resendId?: string;
+  error?: string;
+  attempts: number;
+  metadata?: any;
+  sentAt: FirestoreTimestamp;
+  lastAttemptAt: FirestoreTimestamp;
+}
+
+// ─── Coupon ────────────────────────────────────────────────────────────────
+export interface Coupon {
+  id: string; // The coupon code (e.g., LAUNCH2026)
+  type: "percentage" | "flat";
+  value: number; // Percentage (0-100) or Flat amount in paise
+  minOrderAmount?: number; // in paise
+  maxDiscount?: number; // in paise (relevant for percentage)
+  creatorId?: string; // If set, coupon only works for this creator's courses
+  courseId?: string; // If set, coupon only works for this specific course
+  usageLimit?: number;
+  usageCount: number;
+  expiryDate?: FirestoreTimestamp;
+  isActive: boolean;
+  createdAt: FirestoreTimestamp;
+}
+
+// ─── Coupon Usage ──────────────────────────────────────────────────────────
+export interface CouponUsage {
+  id: string;
+  couponId: string;
+  userId: string;
+  courseId: string;
+  orderId: string;
+  discountAmount: number; // in paise
+  usedAt: FirestoreTimestamp;
+}

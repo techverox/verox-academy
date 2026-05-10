@@ -37,6 +37,9 @@ import {
   incrementCourseStats,
 } from "@/lib/aggregation";
 import { FieldValue } from "firebase-admin/firestore";
+import { EmailService } from "@/lib/email/service";
+import { EnrollmentSuccessEmail } from "@/emails/EnrollmentSuccess";
+import { NewEnrollmentCreatorEmail } from "@/emails/NewEnrollmentCreator";
 
 export const dynamic = "force-dynamic";
 
@@ -180,6 +183,9 @@ async function handlePaymentCaptured(
       return;
     }
   }
+  
+  const couponCode = notes?.couponCode as string | undefined;
+  const discountAmount = notes?.discountAmount ? parseInt(notes.discountAmount as string) : 0;
 
   // ─── Update Payment Record ─────────────────────────────────────────────
   // Update the payment record created during order creation
@@ -190,6 +196,8 @@ async function handlePaymentCaptured(
       status: "captured",
       amount,
       verifiedAt: FieldValue.serverTimestamp(),
+      couponCode: couponCode || null,
+      discountAmount: discountAmount || 0,
       metadata: {
         webhookEventId: (event as Record<string, string>).event_id || "",
         courseTitle: notes?.courseTitle || "",
@@ -198,6 +206,28 @@ async function handlePaymentCaptured(
     },
     { merge: true }
   );
+
+  // ─── Record Coupon Usage ──────────────────────────────────────────────
+  if (couponCode) {
+    await db.runTransaction(async (transaction) => {
+      const couponRef = db.collection("coupons").doc(couponCode.toUpperCase());
+      const usageRef = db.collection("couponUsage").doc();
+      
+      transaction.update(couponRef, {
+        usageCount: FieldValue.increment(1)
+      });
+      
+      transaction.set(usageRef, {
+        id: usageRef.id,
+        couponId: couponCode.toUpperCase(),
+        userId,
+        courseId,
+        orderId,
+        discountAmount,
+        usedAt: FieldValue.serverTimestamp()
+      });
+    });
+  }
 
   // ─── Create Enrollment ─────────────────────────────────────────────────
   // SECURITY: Enrollment ONLY happens here, after verified payment
@@ -220,6 +250,53 @@ async function handlePaymentCaptured(
     console.log(
       `[WEBHOOK] ✅ Enrollment created: user=${userId}, course=${courseId}, payment=${paymentId}`
     );
+
+    // ─── 5. Trigger Emails ───────────────────────────────────────────
+    try {
+      const userSnap = await db.collection("users").doc(userId).get();
+      const courseSnap = await db.collection("courses").doc(courseId).get();
+      
+      if (userSnap.exists && courseSnap.exists) {
+        const userData = userSnap.data()!;
+        const courseData = courseSnap.data()!;
+        
+        // A. Email to Student
+        await EmailService.sendEmail({
+          to: userData.email,
+          subject: `Enrollment Success: ${courseData.title}`,
+          template: "student_enrollment_success",
+          recipientId: userId,
+          react: EnrollmentSuccessEmail({
+            userName: userData.name || "Student",
+            courseTitle: courseData.title,
+            courseThumbnail: courseData.thumbnail,
+            courseId: courseId,
+          }),
+        });
+
+        // B. Email to Creator (if not admin)
+        if (courseData.creatorId && courseData.creatorId !== "admin") {
+          const creatorSnap = await db.collection("users").doc(courseData.creatorId).get();
+          if (creatorSnap.exists) {
+            const creatorData = creatorSnap.data()!;
+            await EmailService.sendEmail({
+              to: creatorData.email,
+              subject: `New Enrollment: ${userData.name || "A new student"}`,
+              template: "creator_new_enrollment",
+              recipientId: courseData.creatorId,
+              react: NewEnrollmentCreatorEmail({
+                creatorName: creatorData.name || "Creator",
+                studentName: userData.name || "A new student",
+                courseTitle: courseData.title,
+                revenue: (amount * 0.8), // Assuming 80/20 split
+              }),
+            });
+          }
+        }
+      }
+    } catch (emailError) {
+      console.error("[WEBHOOK] Failed to send enrollment emails:", emailError);
+    }
   }
 }
 

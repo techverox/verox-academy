@@ -5,25 +5,33 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import "./globals.css";
 
+import { APP_URL } from "@/lib/constants";
+
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://verox-academy.vercel.app"),
+  metadataBase: new URL(APP_URL),
   title: {
     default: "Verox Academy | Premium SaaS LMS Platform",
     template: "%s | Verox Academy",
   },
   description: "Master new skills with Verox Academy. A cinematic, high-performance learning experience designed for modern students.",
-  keywords: ["LMS", "Online Courses", "SaaS", "Next.js LMS", "Skill Development", "Verox Academy"],
-  authors: [{ name: "Verox Team" }],
+  keywords: ["LMS", "Online Courses", "SaaS", "Next.js LMS", "Skill Development", "Verox Academy", "Digital Learning"],
+  authors: [{ name: "Verox Team", url: APP_URL }],
   creator: "Verox Academy",
+  publisher: "Techverox",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
   openGraph: {
     type: "website",
     locale: "en_US",
-    url: "https://verox-academy.vercel.app",
+    url: APP_URL,
     siteName: "Verox Academy",
     title: "Verox Academy | Premium SaaS LMS Platform",
     description: "Master new skills with Verox Academy. A cinematic, high-performance learning experience designed for modern students.",
@@ -42,10 +50,12 @@ export const metadata: Metadata = {
     description: "Master new skills with Verox Academy. A cinematic, high-performance learning experience designed for modern students.",
     images: ["/og-image.jpg"],
     creator: "@veroxacademy",
+    site: "@veroxacademy",
   },
   robots: {
     index: true,
     follow: true,
+    nocache: true,
     googleBot: {
       index: true,
       follow: true,
@@ -54,6 +64,7 @@ export const metadata: Metadata = {
       "max-snippet": -1,
     },
   },
+  category: "education",
 };
 
 export const viewport: Viewport = {

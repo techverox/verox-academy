@@ -1,13 +1,21 @@
 export const dynamic = "force-static";
 import { MetadataRoute } from "next";
 
+import { APP_URL } from "@/lib/constants";
+
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/dashboard/", "/learn/", "/api/"],
+      disallow: [
+        "/dashboard/", 
+        "/learn/", 
+        "/admin/", 
+        "/creator/", 
+        "/api/"
+      ],
     },
-    sitemap: "https://verox-academy.vercel.app/sitemap.xml",
+    sitemap: `${APP_URL}/sitemap.xml`,
   };
 }

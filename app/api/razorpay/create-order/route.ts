@@ -26,6 +26,9 @@ import {
 } from "@/lib/firestore-server";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
+import { validateCoupon } from "@/lib/coupons";
+import { createEnrollmentServer } from "@/lib/firestore-server";
+import { incrementPlatformStats, incrementCourseStats } from "@/lib/aggregation";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +47,7 @@ export async function POST(req: NextRequest) {
 
     // ─── 2. Validate Request Body ──────────────────────────────────────────
     const body = await req.json();
-    const { courseId } = body;
+    const { courseId, couponCode } = body;
 
     if (!courseId || typeof courseId !== "string") {
       return NextResponse.json(
@@ -81,14 +84,60 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ─── 5. Create Razorpay Order ──────────────────────────────────────────
+    // ─── 5. Handle Coupons ────────────────────────────────────────────────
+    let amountInPaise = Math.round(course.price * 100);
+    let discountAmount = 0;
+    let appliedCouponId = null;
+
+    if (couponCode) {
+      const validation = await validateCoupon(
+        couponCode,
+        courseId,
+        amountInPaise,
+        course.creatorId || "admin"
+      );
+
+      if (!validation.isValid) {
+        return NextResponse.json({ error: validation.error }, { status: 400 });
+      }
+
+      discountAmount = validation.discountAmount;
+      amountInPaise -= discountAmount;
+      appliedCouponId = validation.coupon?.id || null;
+    }
+
+    // ─── 6. Handle 100% Discount (FREE) ────────────────────────────────────
+    if (amountInPaise <= 0) {
+      // Direct enrollment for free courses or 100% discount
+      const created = await createEnrollmentServer(userId, courseId, "FREE_" + Date.now());
+      if (created) {
+        await Promise.all([
+          incrementPlatformStats({ totalEnrollments: 1 }),
+          incrementCourseStats(courseId, { totalEnrollments: 1 }),
+        ]);
+
+        if (appliedCouponId) {
+          const db = getAdminDb();
+          await db.collection("coupons").doc(appliedCouponId).update({
+            usageCount: FieldValue.increment(1)
+          });
+        }
+      }
+
+      return NextResponse.json({
+        id: "free_enrollment",
+        amount: 0,
+        currency: "INR",
+        courseTitle: course.title,
+        status: "completed"
+      });
+    }
+
+    // ─── 7. Create Razorpay Order ──────────────────────────────────────────
     const razorpay = new Razorpay({
       key_id: serverEnv.RAZORPAY_KEY_ID,
       key_secret: serverEnv.RAZORPAY_KEY_SECRET,
     });
-
-    // Convert price from rupees to paise (Razorpay expects paise)
-    const amountInPaise = Math.round(course.price * 100);
 
     // REVENUE BREAKDOWN (80/20 Split)
     const platformFee = Math.round(amountInPaise * 0.2);
@@ -104,26 +153,28 @@ export async function POST(req: NextRequest) {
         courseTitle: course.title,
         userEmail: decodedToken.email || "",
         creatorId: course.creatorId || "admin",
+        couponCode: appliedCouponId || "",
+        discountAmount: discountAmount.toString(),
       },
     });
 
-    // ─── 6. Store Payment Record (status: created) ─────────────────────────
-    // This creates a preliminary record that the webhook will later update.
+    // ─── 8. Store Payment Record (status: created) ─────────────────────────
     const db = getAdminDb();
     await db.collection("payments").doc(order.id).set({
       id: order.id,
       userId,
       courseId,
       orderId: order.id,
-      paymentId: "", // Will be set by webhook
+      paymentId: "",
       amount: amountInPaise,
       currency: "INR",
       status: "created",
-      // Revenue tracking
       platformFee,
       creatorRevenue,
       creatorId: course.creatorId || "admin",
       payoutStatus: course.creatorId === "admin" ? "n/a" : "pending",
+      couponCode: appliedCouponId,
+      discountAmount,
       createdAt: FieldValue.serverTimestamp(),
       metadata: {
         courseTitle: course.title,
@@ -131,7 +182,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // ─── 7. Return Order Details to Client ─────────────────────────────────
     return NextResponse.json({
       id: order.id,
       amount: order.amount,

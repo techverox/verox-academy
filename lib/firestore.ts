@@ -47,6 +47,22 @@ export const submitCreatorApplication = async (application: Omit<CreatorApplicat
   };
 
   await setDoc(newAppRef, newApp);
+  
+  // Trigger email via API (Admin Alert)
+  try {
+    const { auth } = await import("./firebase");
+    const token = await auth.currentUser?.getIdToken();
+    if (token) {
+      await fetch("/api/creators/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify(application),
+      });
+    }
+  } catch (err) {
+    console.error("[EMAIL] Failed to trigger creator application email:", err);
+  }
+
   return newAppRef.id;
 };
 
@@ -85,6 +101,20 @@ export const createUserIfNotExists = async (userData: Partial<User>) => {
       lastLogin: serverTimestamp(),
     };
     await setDoc(userRef, newUser);
+    
+    // Trigger Welcome Email via API
+    try {
+      const { auth } = await import("./firebase");
+      const token = await auth.currentUser?.getIdToken();
+      if (token) {
+        await fetch("/api/auth/onboard", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      }
+    } catch (err) {
+      console.warn("[EMAIL] Failed to trigger welcome email:", err);
+    }
   } else {
     // Update last login
     await setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true });
@@ -257,12 +287,45 @@ export const markLessonComplete = async (
       status: isFinished ? "completed" : "active",
       completedAt: isFinished ? serverTimestamp() : (enrollmentData.completedAt || null)
     });
+
+    // ─── Trigger Review Reminder at 50% ──────────────────────────
+    if (newProgress >= 50 && (enrollmentData.progress || 0) < 50) {
+      // Trigger Review Reminder via API
+      try {
+        const { auth } = await import("./firebase");
+        const token = await auth.currentUser?.getIdToken();
+        if (token) {
+          fetch("/api/reviews/reminder", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ courseId }),
+          });
+        }
+      } catch (err) {
+        console.warn("[EMAIL] Failed to trigger review reminder email:", err);
+      }
+    }
   });
 
   // 3. Auto-issue certificate if finished (outside transaction for simplicity)
   const finalEnrollmentSnap = await getDoc(enrollmentRef);
   if (finalEnrollmentSnap.exists() && finalEnrollmentSnap.data().status === "completed") {
-    await autoIssueCertificate(userId, courseId);
+    // Trigger Certificate Issuance and Email via API
+    try {
+      const { auth } = await import("./firebase");
+      const token = await auth.currentUser?.getIdToken();
+      if (token) {
+        await fetch("/api/certificates/issue", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ courseId }),
+        });
+      }
+    } catch (err) {
+      console.error("[EMAIL] Failed to trigger certificate email:", err);
+      // Fallback to client-side issuance if API fails (but email won't be sent)
+      await autoIssueCertificate(userId, courseId);
+    }
   }
 };
 
@@ -664,6 +727,22 @@ export const requestPayout = async (creatorId: string, amount: number, paymentMe
   };
 
   await setDoc(newPayoutRef, newPayout);
+  
+  // Trigger Admin Alert via API
+  try {
+    const { auth } = await import("./firebase");
+    const token = await auth.currentUser?.getIdToken();
+    if (token) {
+      await fetch("/api/payouts/request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ amount, paymentMethod }),
+      });
+    }
+  } catch (err) {
+    console.error("[EMAIL] Failed to trigger payout alert email:", err);
+  }
+
   return newPayoutRef.id;
 };
 

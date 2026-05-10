@@ -12,7 +12,7 @@
  * to enable SSR data fetching, better SEO, and smaller JS bundles.
  */
 
-import { Course, Lesson, Payment, Enrollment, CreatorApplication, User } from "@/types/firestore";
+import { Course, Lesson, Payment, Enrollment, CreatorApplication, User, Certificate } from "@/types/firestore";
 import { getAdminDb, getAdminAuth } from "./firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
 
@@ -344,4 +344,18 @@ async function batchGetDocuments(
   });
 
   return result;
+}
+
+/**
+ * Fetch a certificate by ID (server-side).
+ */
+export async function getCertificateByIdServer(
+  certId: string
+): Promise<Certificate | null> {
+  const db = getAdminDb();
+  const doc = await db.collection("certificates").doc(certId).get();
+
+  if (!doc.exists) return null;
+
+  return { id: doc.id, ...doc.data() } as Certificate;
 }

@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyAdminToken } from "@/lib/auth-helpers";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { FieldValue } from "firebase-admin/firestore";
+import { EmailService } from "@/lib/email/service";
+import { PayoutProcessedEmail } from "@/emails/PayoutProcessed";
 
 export async function POST(request: NextRequest) {
   try {
@@ -45,6 +47,29 @@ export async function POST(request: NextRequest) {
         });
       }
     });
+
+    // ─── Trigger Payout Email ───────────────────────────────────────
+    if (status === "paid") {
+      try {
+        const creatorSnap = await db.collection("users").doc(payoutData.creatorId).get();
+        if (creatorSnap.exists) {
+          const creatorData = creatorSnap.data()!;
+          await EmailService.sendEmail({
+            to: creatorData.email,
+            subject: "Your payout has been processed!",
+            template: "creator_payout_processed",
+            recipientId: payoutData.creatorId,
+            react: PayoutProcessedEmail({
+              userName: creatorData.name || "Creator",
+              amount: payoutData.amount,
+              payoutId: requestId,
+            }),
+          });
+        }
+      } catch (emailError) {
+        console.error("[API] Failed to send payout processed email:", emailError);
+      }
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -45,6 +45,9 @@ export const serverEnv = {
   get FIREBASE_PRIVATE_KEY() {
     return getOptionalEnv("FIREBASE_PRIVATE_KEY");
   },
+  get RESEND_API_KEY() {
+    return getOptionalEnv("RESEND_API_KEY", "re_123");
+  },
 } as const;
 
 // ─── Client-Safe Environment Variables ──────────────────────────────────────
