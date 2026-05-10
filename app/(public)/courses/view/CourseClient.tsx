@@ -1,7 +1,18 @@
+/**
+ * CourseClient — Course Detail Page (Client Component)
+ * ======================================================
+ * Displays course details, curriculum, and handles enrollment CTA.
+ *
+ * SECURITY CHANGE:
+ * - Removed direct `enrollUserInCourse()` call (was free enrollment bypass)
+ * - Now uses RazorpayCheckout component for payment-gated enrollment
+ * - Enrollment only happens after verified payment (server-side)
+ */
+
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { getCourseById, getLessonsByCourseId, isUserEnrolled, enrollUserInCourse } from "@/lib/firestore";
+import { getCourseById, getLessonsByCourseId, isUserEnrolled } from "@/lib/firestore";
 import { Course, Lesson } from "@/types/firestore";
 import { useAuth } from "@/context/auth-context";
 import Link from "next/link";
@@ -19,6 +30,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
+import RazorpayCheckout from "@/components/RazorpayCheckout";
 
 function CourseViewContent() {
   const router = useRouter();
@@ -29,7 +41,6 @@ function CourseViewContent() {
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEnrolled, setIsEnrolled] = useState(false);
-  const [enrolling, setEnrolling] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -61,25 +72,6 @@ function CourseViewContent() {
     }
     fetchData();
   }, [courseId, user, router]);
-
-  const handleEnroll = async () => {
-    if (!user) {
-      router.push("/login/");
-      return;
-    }
-    if (!courseId) return;
-
-    setEnrolling(true);
-    try {
-      await enrollUserInCourse(user.uid, courseId);
-      setIsEnrolled(true);
-      router.push(`/learn/viewer/?id=${courseId}`);
-    } catch (error) {
-      console.error("Enrollment failed:", error);
-    } finally {
-      setEnrolling(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -212,14 +204,14 @@ function CourseViewContent() {
                     </Button>
                   </Link>
                 ) : (
-                  <Button 
-                    size="lg" 
-                    className="w-full" 
-                    onClick={handleEnroll}
-                    disabled={enrolling}
-                  >
-                    {enrolling ? "Securing Seat..." : "Enroll in Course"}
-                  </Button>
+                  /* SECURE PAYMENT FLOW — Replaces old free enrollment */
+                  <RazorpayCheckout
+                    courseId={course.id}
+                    courseName={course.title}
+                    price={course.price}
+                    onSuccess={() => setIsEnrolled(true)}
+                    onError={(error) => console.error("Payment failed:", error)}
+                  />
                 )}
 
                 <div className="mt-10 space-y-4">

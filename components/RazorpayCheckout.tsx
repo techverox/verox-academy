@@ -1,118 +1,224 @@
+/**
+ * RazorpayCheckout Component — Secure Payment Flow
+ * ==================================================
+ * Client-side component that orchestrates the Razorpay payment flow.
+ *
+ * FLOW:
+ * 1. User clicks "Enroll Now"
+ * 2. Component sends authenticated request to /api/razorpay/create-order
+ * 3. Server validates course, creates Razorpay order, stores payment record
+ * 4. Razorpay Checkout modal opens
+ * 5. On success: Sends verification to /api/razorpay/verify
+ * 6. On failure: Shows error state
+ * 7. Webhook (async) creates enrollment if verify hasn't already
+ *
+ * SECURITY:
+ * - Uses Firebase Auth token for API authentication
+ * - Price comes from server, not client (prevents manipulation)
+ * - Enrollment happens server-side only
+ */
+
 "use client";
 
 import React, { useState } from "react";
 import Script from "next/script";
 import { Button } from "@/components/ui/Button";
+import { useAuth } from "@/context/auth-context";
+import { auth } from "@/lib/firebase";
+import { useRouter } from "next/navigation";
 
 interface RazorpayCheckoutProps {
-  amount: number; // in paise
-  courseId?: string;
-  courseName?: string;
-  onSuccess?: (data: any) => void;
-  onError?: (error: any) => void;
+  courseId: string;
+  courseName: string;
+  price: number; // Display price in rupees (for UI only)
+  onSuccess?: () => void;
+  onError?: (error: string) => void;
 }
 
+// Razorpay types
+interface RazorpayResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+interface RazorpayError {
+  error: {
+    description: string;
+  };
+}
+
+type PaymentState = "idle" | "creating_order" | "checkout_open" | "verifying" | "success" | "error";
+
 const RazorpayCheckout: React.FC<RazorpayCheckoutProps> = ({
-  amount,
   courseId,
-  courseName = "Verox Academy Course",
+  courseName,
+  price,
   onSuccess,
   onError,
 }) => {
-  const [loading, setLoading] = useState(false);
+  const [state, setState] = useState<PaymentState>("idle");
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const { user } = useAuth();
+  const router = useRouter();
+
+  /**
+   * Get the current user's Firebase ID token for API authentication.
+   */
+  const getAuthToken = async (): Promise<string> => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error("You must be logged in to make a purchase");
+    }
+    return currentUser.getIdToken();
+  };
 
   const handlePayment = async () => {
-    setLoading(true);
+    // ─── Pre-checks ────────────────────────────────────────────────────
+    if (!user) {
+      router.push("/login/");
+      return;
+    }
+
+    setErrorMessage("");
+    setState("creating_order");
+
     try {
-      // 1. Create order on the server
-      const response = await fetch("/api/create-order", {
+      const token = await getAuthToken();
+
+      // ─── 1. Create Order (Server-Side) ───────────────────────────────
+      const orderResponse = await fetch("/api/razorpay/create-order", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          amount: amount,
-          currency: "INR",
-          receipt: courseId ? `receipt_${courseId}` : undefined,
-        }),
+        body: JSON.stringify({ courseId }),
       });
 
-      const orderData = await response.json();
+      const orderData = await orderResponse.json();
 
-      if (!response.ok) {
+      if (!orderResponse.ok) {
         throw new Error(orderData.error || "Failed to create order");
       }
 
-      // 2. Open Razorpay Checkout Modal
+      setState("checkout_open");
+
+      // ─── 2. Open Razorpay Checkout ───────────────────────────────────
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: orderData.amount,
         currency: orderData.currency,
         name: "Verox Academy",
-        description: `Purchase for ${courseName}`,
+        description: `Enrollment: ${courseName}`,
         order_id: orderData.id,
-        handler: async function (response: any) {
-          // 3. Verify payment on the server
+        handler: async function (response: RazorpayResponse) {
+          setState("verifying");
+
+          // ─── 3. Verify Payment (Server-Side) ─────────────────────
           try {
-            const verifyRes = await fetch("/api/verify-payment", {
+            const freshToken = await getAuthToken();
+
+            const verifyRes = await fetch("/api/razorpay/verify", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
+                Authorization: `Bearer ${freshToken}`,
               },
               body: JSON.stringify({
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
+                courseId,
               }),
             });
 
             const verifyData = await verifyRes.json();
 
             if (verifyRes.ok) {
-              if (onSuccess) onSuccess(verifyData);
-              alert("Payment Successful! Your course access is being activated.");
+              setState("success");
+              if (onSuccess) onSuccess();
+
+              // Redirect to learning viewer after short delay
+              setTimeout(() => {
+                router.push(`/learn/viewer/?id=${courseId}`);
+              }, 1500);
             } else {
-              throw new Error(verifyData.error || "Verification failed");
+              throw new Error(
+                verifyData.error || "Payment verification failed"
+              );
             }
-          } catch (err: any) {
-            console.error("Verification error:", err);
-            if (onError) onError(err);
-            alert("Payment verification failed. Please contact support.");
+          } catch (err: unknown) {
+            const msg =
+              err instanceof Error ? err.message : "Verification failed";
+            console.error("[PAYMENT] Verification error:", msg);
+            setErrorMessage(
+              "Payment was successful but verification failed. " +
+                "Your access will be activated shortly via our system. " +
+                "If not, please contact support."
+            );
+            setState("error");
+            if (onError) onError(msg);
           }
         },
         prefill: {
-          name: "Student Name",
-          email: "student@example.com",
-          contact: "9999999999",
+          name: user?.displayName || "",
+          email: user?.email || "",
         },
         theme: {
-          color: "#7c3aed", // Premium purple
+          color: "#7c3aed", // Premium purple from design system
         },
         modal: {
           ondismiss: function () {
-            setLoading(false);
-            console.log("Checkout modal closed");
+            setState("idle");
           },
+          confirm_close: true,
         },
       };
 
-      const rzp = new (window as any).Razorpay(options);
-      
-      rzp.on('payment.failed', function (response: any) {
-        alert("Payment failed: " + response.error.description);
-        if (onError) onError(response.error);
-        setLoading(false);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const RazorpayConstructor = (window as unknown as Record<string, any>).Razorpay;
+      const rzp = new RazorpayConstructor(options) as {
+        open: () => void;
+        on: (event: string, callback: (response: RazorpayError) => void) => void;
+      };
+
+      rzp.on("payment.failed", function (response: RazorpayError) {
+        setErrorMessage(response.error.description || "Payment failed");
+        setState("error");
+        if (onError) onError(response.error.description);
       });
 
       rzp.open();
-    } catch (error: any) {
-      console.error("Payment error:", error);
-      alert(error.message || "An error occurred during payment setup");
-      if (onError) onError(error);
-    } finally {
-      setLoading(false);
+    } catch (error: unknown) {
+      const msg =
+        error instanceof Error ? error.message : "Payment setup failed";
+      console.error("[PAYMENT] Error:", msg);
+      setErrorMessage(msg);
+      setState("error");
+      if (onError) onError(msg);
     }
   };
+
+  // ─── Button State Management ───────────────────────────────────────────
+  const getButtonText = (): string => {
+    switch (state) {
+      case "creating_order":
+        return "Preparing Checkout...";
+      case "checkout_open":
+        return "Complete Payment...";
+      case "verifying":
+        return "Verifying Payment...";
+      case "success":
+        return "✓ Enrollment Complete!";
+      case "error":
+        return "Try Again";
+      default:
+        return `Enroll Now — ₹${price}`;
+    }
+  };
+
+  const isDisabled = ["creating_order", "checkout_open", "verifying", "success"].includes(state);
 
   return (
     <>
@@ -121,13 +227,33 @@ const RazorpayCheckout: React.FC<RazorpayCheckoutProps> = ({
         src="https://checkout.razorpay.com/v1/checkout.js"
         strategy="lazyOnload"
       />
-      <Button
-        onClick={handlePayment}
-        disabled={loading}
-        className="w-full md:w-auto"
-      >
-        {loading ? "Processing..." : "Enroll Now"}
-      </Button>
+
+      <div className="space-y-3">
+        <Button
+          onClick={state === "error" ? handlePayment : handlePayment}
+          disabled={isDisabled}
+          size="lg"
+          className={`w-full ${state === "success" ? "bg-success hover:bg-success" : ""}`}
+        >
+          {getButtonText()}
+        </Button>
+
+        {/* Error Message */}
+        {state === "error" && errorMessage && (
+          <div className="rounded-xl bg-danger/10 border border-danger/20 p-4">
+            <p className="text-sm font-medium text-danger">{errorMessage}</p>
+          </div>
+        )}
+
+        {/* Success Message */}
+        {state === "success" && (
+          <div className="rounded-xl bg-success/10 border border-success/20 p-4">
+            <p className="text-sm font-medium text-success">
+              Payment verified! Redirecting to your course...
+            </p>
+          </div>
+        )}
+      </div>
     </>
   );
 };

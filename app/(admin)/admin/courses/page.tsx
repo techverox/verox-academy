@@ -91,7 +91,7 @@ export default function AdminCoursesPage() {
                         </div>
                         <div>
                           <p className="font-black text-zinc-900 dark:text-zinc-50 line-clamp-1">{course.title}</p>
-                          <p className="text-xs font-bold text-zinc-400 mt-1">Updated {new Date(course.updatedAt?.seconds * 1000).toLocaleDateString()}</p>
+                          <p className="text-xs font-bold text-zinc-400 mt-1">Updated {course.updatedAt && typeof course.updatedAt === 'object' && 'seconds' in course.updatedAt ? new Date(course.updatedAt.seconds * 1000).toLocaleDateString() : "N/A"}</p>
                         </div>
                       </div>
                     </td>

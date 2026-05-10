@@ -8,7 +8,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
 export default function Navbar() {
-  const { user, profile } = useAuth();
+  const { user, isAdmin } = useAuth();
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -27,7 +27,7 @@ export default function Navbar() {
   const navLinks = [
     { name: "Courses", href: "/courses/" },
     { name: "Pricing", href: "/#pricing" },
-    ...(profile?.role === "admin" ? [{ name: "Admin Dashboard", href: "/admin/" }] : []),
+    ...(isAdmin ? [{ name: "Admin Dashboard", href: "/admin/" }] : []),
   ];
 
   const isActive = (href: string) => pathname === href;
@@ -76,7 +76,7 @@ export default function Navbar() {
                   >
                     Logout
                   </button>
-                  {profile?.role === "admin" ? (
+                  {isAdmin ? (
                     <Link
                       href="/admin/"
                       className="rounded-full bg-red-600 px-6 py-2.5 text-sm font-black uppercase tracking-widest text-white transition-all hover:scale-105 active:scale-95 shadow-lg shadow-red-500/20"

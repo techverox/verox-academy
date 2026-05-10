@@ -1,3 +1,15 @@
+/**
+ * Admin Dashboard Page
+ * =====================
+ * Platform overview with aggregated metrics.
+ *
+ * UPGRADE:
+ * - Uses `isAdmin` from custom claims (no Firestore role check)
+ * - Admin stats still use client-side Firestore reads for now
+ *   (will use server aggregation collections once populated)
+ * - Recent enrollments use batched reads (optimized in lib/admin.ts)
+ */
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -5,23 +17,37 @@ import { getAdminStats, getRecentEnrollments } from "@/lib/admin";
 import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
 
+interface AdminStatsData {
+  totalCourses: number;
+  totalEnrollments: number;
+  totalLessons: number;
+  totalUsers: number;
+}
+
+interface RecentActivity {
+  id: string;
+  userName: string;
+  courseTitle: string;
+  enrolledAt: { seconds: number } | null;
+}
+
 export default function AdminDashboard() {
-  const { profile, loading: authLoading } = useAuth();
+  const { isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [stats, setStats] = useState<any>(null);
-  const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [stats, setStats] = useState<AdminStatsData | null>(null);
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && (!profile || profile.role !== "admin")) {
+    if (!authLoading && !isAdmin) {
       router.replace("/dashboard/");
     }
-  }, [profile, authLoading, router]);
+  }, [isAdmin, authLoading, router]);
 
   useEffect(() => {
     async function fetchData() {
-      if (!profile || profile.role !== "admin") return;
+      if (!isAdmin) return;
       
       setLoading(true);
       setError(null);
@@ -31,7 +57,7 @@ export default function AdminDashboard() {
           getRecentEnrollments()
         ]);
         setStats(statsData);
-        setRecentActivity(activityData);
+        setRecentActivity(activityData as RecentActivity[]);
       } catch (err) {
         console.error("Dashboard fetch error:", err);
         setError("Failed to load platform analytics.");
@@ -40,10 +66,10 @@ export default function AdminDashboard() {
       }
     }
 
-    if (!authLoading && profile?.role === "admin") {
+    if (!authLoading && isAdmin) {
       fetchData();
     }
-  }, [profile, authLoading]);
+  }, [isAdmin, authLoading]);
 
   if (authLoading || (loading && !stats)) {
     return (
@@ -152,7 +178,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="text-right">
                   <p className="text-xs font-black uppercase tracking-widest text-zinc-400">
-                    {new Date(activity.enrolledAt?.seconds * 1000).toLocaleDateString()}
+                    {activity.enrolledAt ? new Date(activity.enrolledAt.seconds * 1000).toLocaleDateString() : "N/A"}
                   </p>
                 </div>
               </div>

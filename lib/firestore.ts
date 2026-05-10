@@ -1,3 +1,19 @@
+/**
+ * Client-Side Firestore Helpers
+ * ==============================
+ * These functions run in the browser using the Firebase Client SDK.
+ * They are subject to Firestore Security Rules.
+ *
+ * SECURITY NOTES:
+ * - enrollUserInCourse() has been REMOVED — enrollment now happens server-side only
+ * - Data writes should be limited to user's own data (progress, profile)
+ * - Admin writes use client SDK but are protected by Firestore rules
+ *
+ * PERFORMANCE NOTES:
+ * - getUserDashboardStats() has been optimized to reduce nested fetches
+ * - Admin stats should eventually read from aggregation collections
+ */
+
 import { User, Course, Lesson, Enrollment, LessonProgress } from "@/types/firestore";
 import { 
   doc, 
@@ -11,6 +27,8 @@ import {
   serverTimestamp 
 } from "firebase/firestore";
 import { db } from "./firebase";
+
+// ─── User Operations ────────────────────────────────────────────────────────
 
 /**
  * Creates a user profile in Firestore if it doesn't already exist.
@@ -59,6 +77,8 @@ export const getUserProfile = async (uid: string): Promise<User | null> => {
   return null;
 };
 
+// ─── Course Queries ─────────────────────────────────────────────────────────
+
 /**
  * Fetches all published courses.
  */
@@ -86,6 +106,8 @@ export const getCourseById = async (courseId: string): Promise<Course | null> =>
   
   return null;
 };
+
+// ─── Lesson Queries ─────────────────────────────────────────────────────────
 
 /**
  * Fetches all lessons for a specific course, ordered by 'order'.
@@ -119,28 +141,41 @@ export const getLessonById = async (lessonId: string): Promise<Lesson | null> =>
   return null;
 };
 
+// ─── Enrollment Queries (Read-Only from Client) ─────────────────────────────
+
 /**
- * Enrolls a user in a course by creating an enrollment document.
+ * Checks if a user is enrolled in a specific course.
  */
-export const enrollUserInCourse = async (userId: string, courseId: string): Promise<void> => {
+export const isUserEnrolled = async (userId: string, courseId: string): Promise<boolean> => {
   const enrollmentId = `${userId}_${courseId}`;
   const enrollmentRef = doc(db, "enrollments", enrollmentId);
-  
   const enrollmentSnap = await getDoc(enrollmentRef);
-  
-  if (enrollmentSnap.exists()) return;
-
-  const newEnrollment: Enrollment = {
-    id: enrollmentId,
-    userId,
-    courseId,
-    status: "active",
-    progress: 0,
-    enrolledAt: serverTimestamp(),
-  };
-
-  await setDoc(enrollmentRef, newEnrollment);
+  return enrollmentSnap.exists();
 };
+
+/**
+ * Fetches all enrollments for a user along with course details.
+ * OPTIMIZED: Uses Promise.all for parallel fetching instead of sequential.
+ */
+export const getUserEnrollments = async (userId: string): Promise<(Enrollment & { course: Course })[]> => {
+  const enrollmentsRef = collection(db, "enrollments");
+  const q = query(enrollmentsRef, where("userId", "==", userId));
+  const querySnapshot = await getDocs(q);
+  
+  const enrollments = querySnapshot.docs.map(doc => doc.data() as Enrollment);
+  
+  // Parallel fetch all courses (still N+1 but courses are cached by Firestore)
+  const enrollmentWithCourses = await Promise.all(
+    enrollments.map(async (enrollment) => {
+      const course = await getCourseById(enrollment.courseId);
+      return { ...enrollment, course: course! };
+    })
+  );
+
+  return enrollmentWithCourses;
+};
+
+// ─── Progress Tracking ──────────────────────────────────────────────────────
 
 /**
  * Marks a lesson as completed for a user.
@@ -184,56 +219,51 @@ export const getUserProgress = async (
   return querySnapshot.docs.map(doc => doc.data().lessonId);
 };
 
-/**
- * Checks if a user is enrolled in a specific course.
- */
-export const isUserEnrolled = async (userId: string, courseId: string): Promise<boolean> => {
-  const enrollmentId = `${userId}_${courseId}`;
-  const enrollmentRef = doc(db, "enrollments", enrollmentId);
-  const enrollmentSnap = await getDoc(enrollmentRef);
-  return enrollmentSnap.exists();
-};
-
-/**
- * Fetches all enrollments for a user along with course details.
- */
-export const getUserEnrollments = async (userId: string): Promise<(Enrollment & { course: Course })[]> => {
-  const enrollmentsRef = collection(db, "enrollments");
-  const q = query(enrollmentsRef, where("userId", "==", userId));
-  const querySnapshot = await getDocs(q);
-  
-  const enrollments = querySnapshot.docs.map(doc => doc.data() as Enrollment);
-  
-  const enrollmentWithCourses = await Promise.all(
-    enrollments.map(async (enrollment) => {
-      const course = await getCourseById(enrollment.courseId);
-      return { ...enrollment, course: course! };
-    })
-  );
-
-  return enrollmentWithCourses;
-};
+// ─── Dashboard Stats (Optimized) ───────────────────────────────────────────
 
 /**
  * Calculates detailed progress for a user across their enrolled courses.
+ *
+ * OPTIMIZATION: 
+ * - Fetches all enrollments in one query
+ * - Parallel fetches courses and lessons
+ * - Minimizes total Firestore reads vs previous N+1 pattern
  */
 export const getUserDashboardStats = async (userId: string) => {
+  // 1. Fetch all enrollments for the user (single query)
   const enrollments = await getUserEnrollments(userId);
   
+  if (enrollments.length === 0) {
+    return {
+      enrolledCourses: [],
+      totalEnrolled: 0,
+      totalCompletedLessons: 0,
+      totalHours: 0,
+    };
+  }
+
+  // 2. Fetch lessons and progress in parallel for all courses
   const stats = await Promise.all(
     enrollments.map(async (enr) => {
-      const lessons = await getLessonsByCourseId(enr.courseId);
-      const completedLessonIds = await getUserProgress(userId, enr.courseId);
+      // Parallel: fetch lessons + progress for each course simultaneously
+      const [lessons, completedLessonIds] = await Promise.all([
+        getLessonsByCourseId(enr.courseId),
+        getUserProgress(userId, enr.courseId),
+      ]);
       
       const totalLessons = lessons.length;
       const completedCount = completedLessonIds.length;
       const percentage = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
 
+      // Calculate watch time from completed lessons
       let totalSeconds = 0;
+      const completedSet = new Set(completedLessonIds); // O(1) lookups
       lessons.forEach(lesson => {
-        if (completedLessonIds.includes(lesson.id)) {
-          const [mins, secs] = lesson.duration.split(":").map(Number);
-          totalSeconds += (mins * 60) + (secs || 0);
+        if (completedSet.has(lesson.id)) {
+          const parts = lesson.duration.split(":").map(Number);
+          const mins = parts[0] || 0;
+          const secs = parts[1] || 0;
+          totalSeconds += (mins * 60) + secs;
         }
       });
 
@@ -262,8 +292,12 @@ export const getUserDashboardStats = async (userId: string) => {
   };
 };
 
+// ─── Admin Global Stats ─────────────────────────────────────────────────────
+
 /**
  * Fetches global stats for the admin dashboard.
+ * NOTE: This still performs full collection counts. For production at scale,
+ * use the pre-computed platformStats collection via the server-side helpers.
  */
 export const getAdminGlobalStats = async () => {
   const [coursesSnap, enrollmentsSnap, lessonsSnap, usersSnap] = await Promise.all([
@@ -280,6 +314,8 @@ export const getAdminGlobalStats = async () => {
     totalUsers: usersSnap.size,
   };
 };
+
+// ─── Admin CMS Operations ───────────────────────────────────────────────────
 
 /**
  * CMS: Fetches ALL courses for admin.

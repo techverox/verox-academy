@@ -16,7 +16,7 @@ export default function TestPaymentPage() {
           </p>
           
           <RazorpayCheckout 
-            amount={100} // 100 paise = ₹1
+            price={1} // ₹1 test price
             courseName="Full-Stack Web Development"
             courseId="test_course_1"
           />

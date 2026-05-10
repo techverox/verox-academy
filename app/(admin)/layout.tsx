@@ -1,3 +1,19 @@
+/**
+ * Admin Layout — Custom Claims-Based Access Control
+ * ===================================================
+ * Uses Firebase Custom Claims for admin verification.
+ * Falls back to Firestore profile role for backward compatibility.
+ *
+ * UPGRADE:
+ * - Previously: Read Firestore doc → check role field (slow, extra read)
+ * - Now: Read token claims → instant admin verification (zero Firestore reads)
+ *
+ * SECURITY:
+ * - Custom claims are set server-side and cannot be spoofed by the client
+ * - Token claims are verified by Firebase infrastructure
+ * - Prevents admin page flickering (instant check, no async wait)
+ */
+
 "use client";
 
 import { useAuth } from "@/context/auth-context";
@@ -5,16 +21,14 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const { profile, loading } = useAuth();
+  const { isAdmin, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      if (!profile || profile.role !== "admin") {
-        router.push("/dashboard/");
-      }
+    if (!loading && !isAdmin) {
+      router.push("/dashboard/");
     }
-  }, [profile, loading, router]);
+  }, [isAdmin, loading, router]);
 
   if (loading) {
     return (
@@ -24,7 +38,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  if (!profile || profile.role !== "admin") {
+  if (!isAdmin) {
     return null; // Will redirect via useEffect
   }
 
