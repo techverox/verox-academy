@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import Razorpay from "razorpay";
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  // Initialize inside the handler to avoid build-time errors if env vars are missing
+  const razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID || "placeholder",
+    key_secret: process.env.RAZORPAY_KEY_SECRET || "placeholder",
+  });
+
   try {
     const { amount, currency = "INR", receipt } = await req.json();
 
@@ -18,7 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     const options = {
-      amount: amount, // amount in the smallest currency unit (paise)
+      amount: amount,
       currency: currency,
       receipt: receipt || `receipt_${Date.now()}`,
     };
