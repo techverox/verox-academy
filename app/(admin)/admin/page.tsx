@@ -13,7 +13,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAdminStats, getRecentEnrollments } from "@/lib/admin";
+import { subscribeToAdminStats, subscribeToRecentEnrollments } from "@/lib/admin";
 import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
 
@@ -22,6 +22,7 @@ interface AdminStatsData {
   totalEnrollments: number;
   totalLessons: number;
   totalUsers: number;
+  totalRevenue?: number;
 }
 
 interface RecentActivity {
@@ -37,6 +38,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState<AdminStatsData | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -46,30 +48,49 @@ export default function AdminDashboard() {
   }, [isAdmin, authLoading, router]);
 
   useEffect(() => {
-    async function fetchData() {
-      if (!isAdmin) return;
-      
-      setLoading(true);
-      setError(null);
-      try {
-        const [statsData, activityData] = await Promise.all([
-          getAdminStats(),
-          getRecentEnrollments()
-        ]);
-        setStats(statsData);
-        setRecentActivity(activityData as RecentActivity[]);
-      } catch (err) {
-        console.error("Dashboard fetch error:", err);
-        setError("Failed to load platform analytics.");
-      } finally {
-        setLoading(false);
-      }
-    }
+    if (!isAdmin || authLoading) return;
 
-    if (!authLoading && isAdmin) {
-      fetchData();
-    }
+    setLoading(true);
+
+    // 1. Live Stats Subscription
+    const unsubStats = subscribeToAdminStats((data) => {
+      if (data) {
+        setStats({
+          totalCourses: data.totalCourses || 0,
+          totalEnrollments: data.totalEnrollments || 0,
+          totalLessons: data.totalLessons || 0,
+          totalUsers: data.totalUsers || 0,
+          totalRevenue: data.totalRevenue || 0,
+        });
+      }
+      setLoading(false);
+    });
+
+    // 2. Live Activity Subscription
+    const unsubActivity = subscribeToRecentEnrollments((data) => {
+      setRecentActivity(data as RecentActivity[]);
+    });
+
+    return () => {
+      unsubStats();
+      unsubActivity();
+    };
   }, [isAdmin, authLoading]);
+
+  const handleSyncData = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/admin/stats/sync", { method: "POST" });
+      if (res.ok) {
+        // Stats will update automatically via live subscription (onSnapshot)
+        console.log("Stats synced successfully");
+      }
+    } catch (err) {
+      console.error("Sync error:", err);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   if (authLoading || (loading && !stats)) {
     return (
@@ -104,6 +125,7 @@ export default function AdminDashboard() {
     { label: "Total Enrollments", value: stats?.totalEnrollments, icon: "🎟️" },
     { label: "Total Lessons", value: stats?.totalLessons, icon: "🎥" },
     { label: "Total Users", value: stats?.totalUsers, icon: "👤" },
+    { label: "Total Revenue", value: stats?.totalRevenue, icon: "💰" },
   ];
 
   return (
@@ -122,10 +144,14 @@ export default function AdminDashboard() {
         </div>
         <div className="flex items-center gap-4">
           <button
-            onClick={() => router.push("/dashboard/")}
-            className="h-12 rounded-full border border-zinc-200 bg-white px-8 text-sm font-black text-zinc-900 transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:bg-black dark:text-zinc-50 shadow-sm"
+            onClick={handleSyncData}
+            disabled={syncing}
+            className="h-12 rounded-full border border-zinc-200 bg-white px-8 text-sm font-black text-zinc-900 transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:bg-black dark:text-zinc-50 shadow-sm flex items-center gap-2"
           >
-            View Student Dashboard
+            {syncing ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-900 dark:border-zinc-800 dark:border-t-zinc-50" />
+            ) : "🔄"}
+            {syncing ? "Syncing..." : "Sync Data"}
           </button>
           <button
             onClick={() => router.push("/admin/courses/")}
@@ -136,19 +162,24 @@ export default function AdminDashboard() {
         </div>
       </header>
 
-      <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-5">
         {statCards.map((card, i) => (
           <div 
             key={i} 
-            onClick={() => card.label === "Total Courses" && router.push("/admin/courses/")}
-            className={`group relative overflow-hidden rounded-[2.5rem] border border-zinc-200 bg-white p-10 shadow-sm transition-all hover:shadow-xl dark:border-zinc-800 dark:bg-zinc-950 ${card.label === "Total Courses" ? "cursor-pointer" : ""}`}
+            onClick={() => {
+              if (card.label === "Total Courses") router.push("/admin/courses/");
+              if (card.label === "Total Users") router.push("/admin/users/");
+            }}
+            className={`group relative overflow-hidden rounded-[2.5rem] border border-zinc-200 bg-white p-8 shadow-sm transition-all hover:shadow-xl dark:border-zinc-800 dark:bg-zinc-950 ${(card.label === "Total Courses" || card.label === "Total Users") ? "cursor-pointer" : ""}`}
           >
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400">{card.label}</p>
-                <p className="mt-4 text-5xl font-black text-zinc-900 dark:text-zinc-50">{card.value ?? "0"}</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">{card.label}</p>
+                <p className="mt-4 text-4xl font-black text-zinc-900 dark:text-zinc-50">
+                  {card.label === "Total Revenue" ? `₹${((stats?.totalRevenue || 0) / 100).toLocaleString()}` : (card.value ?? "0")}
+                </p>
               </div>
-              <span className="text-4xl grayscale group-hover:grayscale-0 transition-all duration-500">{card.icon}</span>
+              <span className="text-3xl grayscale group-hover:grayscale-0 transition-all duration-500">{card.icon}</span>
             </div>
             <div className="absolute bottom-0 left-0 h-1.5 w-full bg-zinc-900 dark:bg-zinc-50 opacity-0 group-hover:opacity-100 transition-opacity" />
           </div>

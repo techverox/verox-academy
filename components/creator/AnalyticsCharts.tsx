@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { 
   AreaChart, 
   Area, 
@@ -22,6 +23,16 @@ interface AnalyticsChartsProps {
 }
 
 export default function AnalyticsCharts({ data, title, type, color = "#7C3AED" }: AnalyticsChartsProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return (
+    <div className="bg-zinc-900/30 border border-zinc-800 rounded-[2.5rem] p-8 h-[400px] animate-pulse" />
+  );
+
   return (
     <div className="bg-zinc-900/30 border border-zinc-800 rounded-[2.5rem] p-8">
       <div className="flex items-center justify-between mb-8">
@@ -33,7 +44,7 @@ export default function AnalyticsCharts({ data, title, type, color = "#7C3AED" }
       </div>
 
       <div className="h-[300px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
           {type === "area" ? (
             <AreaChart data={data}>
               <defs>

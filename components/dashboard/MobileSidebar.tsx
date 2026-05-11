@@ -90,6 +90,18 @@ export default function MobileSidebar({ isOpen, onClose }: MobileSidebarProps) {
                 </Link>
               );
             })}
+
+            {/* CREATOR STUDIO BUTTON (Role Based) */}
+            {(profile?.role === 'creator' || profile?.role === 'admin') && (
+              <Link
+                href="/creator"
+                onClick={onClose}
+                className="mt-6 flex items-center gap-3 px-4 py-4 rounded-xl bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/20 text-primary transition-all group"
+              >
+                <Sparkles className="w-5 h-5" />
+                <span className="font-black text-sm uppercase tracking-tighter italic">CREATOR STUDIO</span>
+              </Link>
+            )}
           </div>
 
           <div className="mt-10 p-6 rounded-2xl bg-gradient-to-br from-primary/10 to-transparent border border-primary/5">

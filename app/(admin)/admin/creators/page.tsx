@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { CreatorApplication } from "@/types/firestore";
-import { Check, X, Eye, Clock, ShieldCheck, AlertCircle, Search, Filter } from "lucide-react";
+import { Check, X, Eye, Clock, ShieldCheck, AlertCircle, Search, Filter, Trash2, HelpCircle } from "lucide-react";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 export default function AdminCreatorsPage() {
   const { user, isAdmin, loading: authLoading, refreshClaims } = useAuth();
@@ -14,6 +15,13 @@ export default function AdminCreatorsPage() {
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
 
   const [selectedApp, setSelectedApp] = useState<CreatorApplication | null>(null);
+
+  // Modal State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: "approve" | "delete" | null;
+    applicationId: string;
+  }>({ isOpen: false, type: null, applicationId: "" });
 
   const fetchApplications = async () => {
     try {
@@ -40,7 +48,16 @@ export default function AdminCreatorsPage() {
   }, [user, isAdmin]);
 
   const handleApprove = async (applicationId: string) => {
-    if (!confirm("Are you sure you want to approve this creator? This will grant them creator privileges.")) return;
+    setConfirmModal({
+      isOpen: true,
+      type: "approve",
+      applicationId
+    });
+  };
+
+  const executeApprove = async () => {
+    const { applicationId } = confirmModal;
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
     
     setProcessingId(applicationId);
     try {
@@ -96,6 +113,43 @@ export default function AdminCreatorsPage() {
       }
     } catch (error) {
       console.error("Failed to reject creator:", error);
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
+  const handleDelete = async (applicationId: string) => {
+    setConfirmModal({
+      isOpen: true,
+      type: "delete",
+      applicationId
+    });
+  };
+
+  const executeDelete = async () => {
+    const { applicationId } = confirmModal;
+    setConfirmModal(prev => ({ ...prev, isOpen: false }));
+    
+    setProcessingId(applicationId);
+    try {
+      const idToken = await user?.getIdToken();
+      const res = await fetch("/api/admin/creators/delete", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${idToken}` 
+        },
+        body: JSON.stringify({ applicationId }),
+      });
+      
+      if (res.ok) {
+        setApplications(apps => apps.filter(app => app.id !== applicationId));
+        if (selectedApp?.id === applicationId) {
+          setSelectedApp(null);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to delete application:", error);
     } finally {
       setProcessingId(null);
     }
@@ -253,8 +307,8 @@ export default function AdminCreatorsPage() {
                           <Eye className="w-5 h-5" />
                         </button>
                         
-                        {app.status === "pending" && (
-                          <>
+                        <div className="flex items-center gap-1">
+                          {app.status !== "approved" && (
                             <button 
                               onClick={() => handleApprove(app.id)}
                               disabled={processingId === app.id}
@@ -263,6 +317,8 @@ export default function AdminCreatorsPage() {
                             >
                               <Check className="w-5 h-5" />
                             </button>
+                          )}
+                          {app.status !== "rejected" && (
                             <button 
                               onClick={() => setShowRejectModal(app.id)}
                               disabled={processingId === app.id}
@@ -271,8 +327,16 @@ export default function AdminCreatorsPage() {
                             >
                               <X className="w-5 h-5" />
                             </button>
-                          </>
-                        )}
+                          )}
+                          <button 
+                            onClick={() => handleDelete(app.id)}
+                            disabled={processingId === app.id}
+                            className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-50"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-5 h-5" />
+                          </button>
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -382,24 +446,36 @@ export default function AdminCreatorsPage() {
               )}
             </div>
 
-            {selectedApp.status === "pending" && (
-              <div className="flex gap-3 mt-8 pt-6 border-t border-zinc-200 dark:border-zinc-800">
-                <button 
-                  onClick={() => setShowRejectModal(selectedApp.id)}
-                  disabled={processingId === selectedApp.id}
-                  className="flex-1 py-4 font-bold text-red-500 hover:bg-red-500/10 rounded-2xl transition-all disabled:opacity-50"
-                >
-                  Reject
-                </button>
+            <div className="flex flex-wrap gap-3 mt-8 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+              {selectedApp.status !== "approved" && (
                 <button 
                   onClick={() => handleApprove(selectedApp.id)}
                   disabled={processingId === selectedApp.id}
-                  className="flex-1 py-4 font-black bg-green-500 text-white rounded-2xl hover:bg-green-600 transition-all disabled:opacity-50 active:scale-95"
+                  className="flex-1 min-w-[140px] py-4 font-black bg-green-500 text-white rounded-2xl hover:bg-green-600 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
                 >
-                  Approve Application
+                  <Check className="w-5 h-5" />
+                  Approve
                 </button>
-              </div>
-            )}
+              )}
+              {selectedApp.status !== "rejected" && (
+                <button 
+                  onClick={() => setShowRejectModal(selectedApp.id)}
+                  disabled={processingId === selectedApp.id}
+                  className="flex-1 min-w-[140px] py-4 font-black bg-red-500 text-white rounded-2xl hover:bg-red-600 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <X className="w-5 h-5" />
+                  Reject
+                </button>
+              )}
+              <button 
+                onClick={() => handleDelete(selectedApp.id)}
+                disabled={processingId === selectedApp.id}
+                className="flex-1 min-w-[140px] py-4 font-bold text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-2xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Trash2 className="w-5 h-5" />
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -437,6 +513,21 @@ export default function AdminCreatorsPage() {
           </div>
         </div>
       )}
+      {/* Custom Confirmation Modal */}
+      <ConfirmModal 
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+        onConfirm={confirmModal.type === "approve" ? executeApprove : executeDelete}
+        title={confirmModal.type === "approve" ? "Approve Creator" : "Delete Application"}
+        message={
+          confirmModal.type === "approve" 
+            ? "Are you sure you want to approve this creator? This will grant them creator privileges and access to the Creator Studio immediately."
+            : "Are you sure you want to delete this creator application? This action cannot be undone."
+        }
+        confirmText={confirmModal.type === "approve" ? "Approve Now" : "Delete Permanently"}
+        variant={confirmModal.type === "delete" ? "danger" : "info"}
+        isLoading={processingId === confirmModal.applicationId}
+      />
     </div>
   );
 }

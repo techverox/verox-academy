@@ -51,8 +51,12 @@ export default function TopNavbar({ onOpenMobileSidebar }: TopNavbarProps) {
             <p className="text-[10px] text-primary uppercase font-black tracking-widest">Premium Student</p>
           </div>
           <div className="h-10 w-10 overflow-hidden rounded-xl border border-border bg-muted p-0.5">
-            <div className="flex h-full w-full items-center justify-center rounded-[9px] bg-primary/20 text-primary font-black text-xs">
-              {profile?.name?.charAt(0) || <User className="h-4 w-4" />}
+            <div className="flex h-full w-full items-center justify-center rounded-[9px] bg-primary/20 text-primary font-black text-xs overflow-hidden">
+              {profile?.photoURL ? (
+                <img src={profile.photoURL} alt={profile.name || ""} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+              ) : (
+                profile?.name?.charAt(0) || <User className="h-4 w-4" />
+              )}
             </div>
           </div>
         </div>

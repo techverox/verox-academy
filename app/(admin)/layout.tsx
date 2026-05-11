@@ -55,6 +55,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <button onClick={() => router.push("/admin/")} className="text-sm font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors">Dashboard</button>
               <button onClick={() => router.push("/admin/courses/")} className="text-sm font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors">Courses</button>
               <button onClick={() => router.push("/admin/creators/")} className="text-sm font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors">Creators</button>
+              <button onClick={() => router.push("/admin/users/")} className="text-sm font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors">Users</button>
               <button onClick={() => router.push("/admin/payouts/")} className="text-sm font-black uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors">Payouts</button>
             </div>
           </div>

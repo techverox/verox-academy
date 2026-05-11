@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/use-auth";
 import { createUserIfNotExists } from "@/lib/firestore";
 import { Button } from "@/components/ui/Button";
+import { ConfirmModal } from "@/components/ui/confirm-modal";
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -19,6 +20,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "error" | "signup-prompt";
+  }>({ isOpen: false, title: "", message: "", type: "error" });
   const router = useRouter();
   const { user, profile, loading: authLoading } = useAuth();
   
@@ -86,7 +93,25 @@ export default function LoginPage() {
       }
     } catch (err: unknown) {
       console.error(err);
-      setError((err as any).message || "Authentication failed. Please check your credentials.");
+      const errorCode = (err as any).code;
+      
+      if (errorCode === "auth/invalid-credential" || errorCode === "auth/user-not-found") {
+        setShowErrorModal({
+          isOpen: true,
+          title: "Account Not Found",
+          message: "We couldn't find an account with this email. Would you like to create a new account and start your learning journey?",
+          type: "signup-prompt"
+        });
+      } else if (errorCode === "auth/wrong-password") {
+        setShowErrorModal({
+          isOpen: true,
+          title: "Incorrect Password",
+          message: "The password you entered is incorrect. Please try again or reset your password.",
+          type: "error"
+        });
+      } else {
+        setError((err as any).message || "Authentication failed. Please check your credentials.");
+      }
     } finally {
       setLoading(false);
     }
@@ -193,6 +218,22 @@ export default function LoginPage() {
           By continuing, you agree to our Terms of Service and Privacy Policy.
         </p>
       </div>
+      {/* Professional Error/Signup Modal */}
+      <ConfirmModal 
+        isOpen={showErrorModal.isOpen}
+        onClose={() => setShowErrorModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={() => {
+          if (showErrorModal.type === "signup-prompt") {
+            setIsSignUp(true);
+          }
+          setShowErrorModal(prev => ({ ...prev, isOpen: false }));
+        }}
+        title={showErrorModal.title}
+        message={showErrorModal.message}
+        confirmText={showErrorModal.type === "signup-prompt" ? "Sign Up Now" : "Try Again"}
+        cancelText="Close"
+        variant={showErrorModal.type === "signup-prompt" ? "info" : "danger"}
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { getCreatorStats, getCreatorRecentEnrollments } from "@/lib/firestore";
+import { subscribeToCreatorStats, subscribeToCreatorRecentEnrollments, getCreatorAnalytics } from "@/lib/firestore";
 import { CreatorStats } from "@/types/firestore";
 import { 
   Users, 
@@ -20,25 +20,43 @@ import AnalyticsCharts from "@/components/creator/AnalyticsCharts";
 import { useRouter } from "next/navigation";
 
 export default function CreatorDashboardPage() {
-  const { user } = useAuth();
+  const { user, profile, isCreator, isAdmin } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<CreatorStats | null>(null);
   const [recentEnrollments, setRecentEnrollments] = useState<any[]>([]);
+  const [analytics, setAnalytics] = useState<{revenueData: any[], enrollmentData: any[]}>({
+    revenueData: [],
+    enrollmentData: []
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      const fetchData = async () => {
-        const [statsData, enrollmentsData] = await Promise.all([
-          getCreatorStats(user.uid),
-          getCreatorRecentEnrollments(user.uid)
-        ]);
-        setStats(statsData);
-        setRecentEnrollments(enrollmentsData);
-        setLoading(false);
-      };
-      fetchData();
-    }
+    if (!user || (!isCreator && !isAdmin)) return;
+
+    setLoading(true);
+
+    // 1. Live Stats Subscription
+    const unsubStats = subscribeToCreatorStats(user.uid, (data) => {
+      setStats(data);
+      setLoading(false);
+    });
+
+    // 2. Live Enrollments Subscription
+    const unsubEnrollments = subscribeToCreatorRecentEnrollments(user.uid, (data) => {
+      setRecentEnrollments(data);
+    });
+
+    // 3. Analytics (Fetched once or periodically)
+    const fetchAnalytics = async () => {
+      const data = await getCreatorAnalytics(user.uid);
+      setAnalytics(data);
+    };
+    fetchAnalytics();
+
+    return () => {
+      unsubStats();
+      unsubEnrollments();
+    };
   }, [user]);
 
   if (loading) {
@@ -103,7 +121,7 @@ export default function CreatorDashboardPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-4xl font-black tracking-tight mb-2">
-            Welcome back, <span className="text-primary">{user?.displayName?.split(" ")[0]}</span>.
+            Welcome back, <span className="text-primary">{(profile?.name || user?.displayName || "Creator").split(" ")[0]}</span>.
           </h1>
           <p className="text-zinc-500 font-medium tracking-tight">Here's what's happening with your courses today.</p>
         </div>
@@ -137,28 +155,13 @@ export default function CreatorDashboardPage() {
           title="Revenue Growth" 
           type="area" 
           color="#10B981"
-          data={[
-            { name: "Jan", value: 12000 },
-            { name: "Feb", value: 15000 },
-            { name: "Mar", value: 28000 },
-            { name: "Apr", value: 22000 },
-            { name: "May", value: 35000 },
-            { name: "Jun", value: 45000 },
-          ]}
+          data={analytics.revenueData}
         />
         <AnalyticsCharts 
           title="New Enrollments" 
           type="bar" 
           color="#7C3AED"
-          data={[
-            { name: "Mon", value: 12 },
-            { name: "Tue", value: 18 },
-            { name: "Wed", value: 15 },
-            { name: "Thu", value: 25 },
-            { name: "Fri", value: 32 },
-            { name: "Sat", value: 28 },
-            { name: "Sun", value: 20 },
-          ]}
+          data={analytics.enrollmentData}
         />
       </div>
 

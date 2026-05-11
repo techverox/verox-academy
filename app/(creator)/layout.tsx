@@ -16,14 +16,22 @@ import {
 } from "lucide-react";
 
 export default function CreatorLayout({ children }: { children: React.ReactNode }) {
-  const { isCreator, isAdmin, loading, user } = useAuth();
+  const { isCreator, isAdmin, loading, user, profile } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !isCreator && !isAdmin) {
-      router.push("/dashboard");
+    if (!loading) {
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+      
+      if (!isCreator && !isAdmin) {
+        console.warn("[SECURITY] Non-creator attempted access to Creator Studio:", user.email);
+        router.push("/dashboard");
+      }
     }
-  }, [isCreator, isAdmin, loading, router]);
+  }, [isCreator, isAdmin, loading, router, user]);
 
   if (loading) {
     return (
@@ -70,6 +78,15 @@ export default function CreatorLayout({ children }: { children: React.ReactNode 
                 <ChevronRight className="w-4 h-4 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
               </button>
             ))}
+
+            {/* RELOCATED STUDENT DASHBOARD BUTTON */}
+            <button 
+              onClick={() => router.push("/dashboard")}
+              className="w-full flex items-center gap-4 px-4 py-3 mt-4 rounded-2xl bg-zinc-900/50 border border-zinc-800/50 text-zinc-500 hover:text-primary hover:border-primary/30 transition-all group"
+            >
+              <LayoutDashboard className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              <span className="font-black text-[10px] uppercase tracking-[0.2em]">STUDENT DASHBOARD</span>
+            </button>
           </nav>
         </div>
 
@@ -81,14 +98,6 @@ export default function CreatorLayout({ children }: { children: React.ReactNode 
               Support Center
             </button>
           </div>
-          
-          <button 
-            onClick={() => router.push("/dashboard")}
-            className="w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-zinc-500 hover:text-white transition-all"
-          >
-            <LogOut className="w-5 h-5" />
-            <span className="font-bold">Student View</span>
-          </button>
         </div>
       </aside>
 
@@ -112,8 +121,10 @@ export default function CreatorLayout({ children }: { children: React.ReactNode 
             </button>
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-black tracking-tight">{user?.displayName}</p>
-                <p className="text-[10px] font-black uppercase tracking-widest text-primary">Certified Creator</p>
+                <p className="text-sm font-black tracking-tight">{user?.displayName || profile?.name}</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-primary">
+                  {isAdmin ? "Administrator" : isCreator ? "Certified Creator" : "Student"}
+                </p>
               </div>
               <img 
                 src={user?.photoURL || "https://ui-avatars.com/api/?name=Creator"} 
