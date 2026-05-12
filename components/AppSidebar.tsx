@@ -12,7 +12,6 @@ import {
   LogOut, 
   ChevronLeft,
   Shield,
-  Sparkles,
   Zap,
   TrendingUp,
   Award,
@@ -42,7 +41,7 @@ export function AppSidebar({ type }: SidebarProps) {
       { name: "Payouts", href: "/admin/payouts/", icon: DollarSign },
     ],
     creator: [
-      { name: "Dashboard", href: "/creator/", icon: Sparkles },
+      { name: "Dashboard", href: "/creator/", icon: LayoutDashboard },
       { name: "My Courses", href: "/creator/courses/", icon: Layers },
       { name: "Payouts", href: "/creator/payouts/", icon: DollarSign },
       { name: "Analytics", href: "/creator/analytics/", icon: TrendingUp },
@@ -72,7 +71,7 @@ export function AppSidebar({ type }: SidebarProps) {
          </Link>
       </div>
 
-      {/* Navigation Matrix */}
+      {/* Navigation */}
       <nav className="flex-1 space-y-1">
          {currentLinks.map((link) => {
             const active = pathname === link.href;
@@ -94,7 +93,7 @@ export function AppSidebar({ type }: SidebarProps) {
          })}
       </nav>
 
-      {/* Control Surface */}
+      {/* User area */}
       <div className="mt-auto space-y-4 pt-6 border-t border-sidebar-border">
          <div className="flex items-center gap-3 px-2">
             <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-muted-foreground overflow-hidden border border-border">

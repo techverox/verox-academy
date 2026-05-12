@@ -27,7 +27,10 @@ export default function Navbar() {
                       pathname?.startsWith("/learn") || 
                       pathname?.startsWith("/settings") || 
                       pathname?.startsWith("/certificates") || 
-                      pathname?.startsWith("/wishlist");
+                      pathname?.startsWith("/wishlist") ||
+                      pathname?.startsWith("/login") ||
+                      pathname?.startsWith("/register") ||
+                      pathname?.startsWith("/forgot-password");
 
   if (isDashboard) return null;
 

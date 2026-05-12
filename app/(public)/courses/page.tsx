@@ -4,13 +4,15 @@ import { useEffect, useState, useCallback } from "react";
 import CourseCard from "@/components/CourseCard";
 import { getCourses } from "@/lib/firestore";
 import { Course } from "@/types/firestore";
-import { Search, Sparkles, RefreshCcw, Layers, Filter } from "lucide-react";
+import { Search, BookOpen, RefreshCcw, SlidersHorizontal } from "lucide-react";
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchCourses = useCallback(async () => {
     setLoading(true);
@@ -18,9 +20,10 @@ export default function CoursesPage() {
     try {
       const data = await getCourses();
       setCourses(data);
+      setFilteredCourses(data);
     } catch (err: any) {
       console.error("Error fetching courses:", err);
-      setError("Synchronisation with the central registry failed. Verify your neural link.");
+      setError("Unable to load courses. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -30,83 +33,124 @@ export default function CoursesPage() {
     fetchCourses();
   }, [fetchCourses, retryCount]);
 
-  return (
-    <main className="min-h-screen bg-background pb-32">
-      {/* Cinematic Header */}
-      <div className="relative pt-40 pb-20 overflow-hidden">
-         <div className="absolute inset-0 -z-10 bg-linear-to-b from-primary/5 to-transparent" />
-         <div className="container mx-auto px-8 max-w-7xl">
-            <div className="space-y-6 max-w-4xl">
-               <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-primary/10 border border-primary/20 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
-                  <Layers className="w-4 h-4" />
-                  The Archival Registry
-               </div>
-               <h1 className="text-7xl md:text-9xl font-black tracking-tight text-foreground leading-[0.9]">
-                  CURATED <br />
-                  <span className="text-primary italic">INTELLIGENCE.</span>
-               </h1>
-               <p className="text-xl md:text-2xl font-medium text-muted-foreground leading-relaxed max-w-2xl">
-                  Access the world's most sophisticated curriculum. Engineered for those who refuse to settle for mediocrity.
-               </p>
-            </div>
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredCourses(courses);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredCourses(
+        courses.filter(
+          (c) =>
+            c.title.toLowerCase().includes(query) ||
+            c.description?.toLowerCase().includes(query)
+        )
+      );
+    }
+  }, [searchQuery, courses]);
 
-            {/* Filter Bar */}
-            <div className="mt-20 flex flex-col md:flex-row items-center gap-6 border-b border-border/50 pb-10">
-               <div className="flex-1 relative w-full group">
-                  <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                  <input 
-                    type="text" 
-                    placeholder="Search the registry..." 
-                    className="w-full h-16 pl-16 pr-8 rounded-2xl bg-secondary/50 border border-border/50 focus:border-primary/50 focus:bg-card transition-all outline-none text-sm font-bold placeholder:text-muted-foreground/60"
-                  />
-               </div>
-               <button className="btn-secondary-premium h-16 px-10">
-                  <Filter className="w-4 h-4" />
-                  Refine Search
-               </button>
+  return (
+    <main className="min-h-screen bg-background">
+      {/* Page Header */}
+      <div className="border-b border-border bg-card">
+        <div className="container mx-auto px-6 py-12 max-w-7xl">
+          <div className="space-y-3 max-w-2xl">
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Course Library</span>
             </div>
-         </div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              Browse Courses
+            </h1>
+            <p className="text-muted-foreground text-base leading-relaxed">
+              Explore courses from expert creators. Learn at your own pace with
+              lifetime access and a certificate on completion.
+            </p>
+          </div>
+
+          {/* Search & Filter bar */}
+          <div className="mt-8 flex flex-col sm:flex-row items-center gap-3 max-w-2xl">
+            <div className="relative w-full group">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search courses..."
+                className="w-full h-11 pl-10 pr-4 rounded-lg bg-background border border-border focus:border-primary focus:ring-2 focus:ring-primary/15 outline-none text-sm text-foreground placeholder:text-muted-foreground transition-all"
+              />
+            </div>
+            <button className="h-11 px-5 rounded-lg border border-border bg-background text-sm font-medium text-foreground hover:bg-secondary transition-all flex items-center gap-2 shrink-0">
+              <SlidersHorizontal className="w-4 h-4" />
+              Filters
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Main Registry Grid */}
-      <div className="container mx-auto px-8 max-w-7xl mt-12">
+      {/* Course Grid */}
+      <div className="container mx-auto px-6 py-10 max-w-7xl">
         {loading ? (
-          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="aspect-4/5 animate-pulse rounded-4xl bg-secondary/50 border border-border/50" />
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="rounded-xl bg-secondary/40 border border-border overflow-hidden">
+                <div className="aspect-video w-full bg-secondary/60 animate-pulse" />
+                <div className="p-5 space-y-3">
+                  <div className="h-3 bg-secondary rounded animate-pulse" />
+                  <div className="h-3 bg-secondary rounded animate-pulse w-3/4" />
+                  <div className="h-3 bg-secondary rounded animate-pulse w-1/2 mt-4" />
+                </div>
+              </div>
             ))}
           </div>
         ) : error ? (
-          <div className="flex flex-col items-center justify-center text-center py-32 space-y-8 bg-card rounded-5xl border border-destructive/20 shadow-2xl">
-            <div className="w-24 h-24 rounded-3xl bg-destructive/10 flex items-center justify-center text-destructive">
-               <RefreshCcw className="w-12 h-12" />
+          <div className="flex flex-col items-center justify-center text-center py-24 space-y-5 bg-card rounded-xl border border-destructive/20">
+            <div className="w-14 h-14 rounded-xl bg-destructive/10 flex items-center justify-center text-destructive">
+              <RefreshCcw className="w-7 h-7" />
             </div>
-            <div className="space-y-4">
-               <h3 className="text-3xl font-black tracking-tight">Sync Error</h3>
-               <p className="text-muted-foreground font-medium max-w-sm">{error}</p>
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold text-foreground">Failed to load courses</h3>
+              <p className="text-sm text-muted-foreground max-w-sm">{error}</p>
             </div>
-            <button 
-              onClick={() => setRetryCount(c => c + 1)}
-              className="btn-premium h-16 px-12 rounded-2xl bg-destructive text-destructive-foreground shadow-xl shadow-destructive/20 hover:scale-105"
+            <button
+              onClick={() => setRetryCount((c) => c + 1)}
+              className="h-10 px-6 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary-hover transition-all"
             >
-              Retry Protocol
+              Try Again
             </button>
           </div>
-        ) : courses.length > 0 ? (
-          <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-3">
-            {courses.map((course) => (
-              <CourseCard key={course.id} course={course} />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center text-center py-40 border border-dashed border-border/50 rounded-5xl bg-secondary/20">
-            <div className="w-20 h-20 rounded-2xl bg-secondary flex items-center justify-center text-muted-foreground mb-10">
-               <Layers className="w-10 h-10" />
-            </div>
-            <h2 className="text-4xl font-black tracking-tight mb-4">Registry Empty</h2>
-            <p className="text-xl text-muted-foreground font-medium max-w-md">
-               No courses have been authorized for public release yet. Check back soon.
+        ) : filteredCourses.length > 0 ? (
+          <>
+            <p className="text-sm text-muted-foreground mb-6">
+              Showing {filteredCourses.length} {filteredCourses.length === 1 ? "course" : "courses"}
+              {searchQuery ? ` for "${searchQuery}"` : ""}
             </p>
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredCourses.map((course) => (
+                <CourseCard key={course.id} course={course} />
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center text-center py-32 border border-dashed border-border rounded-xl bg-secondary/20">
+            <div className="w-14 h-14 rounded-xl bg-secondary flex items-center justify-center text-muted-foreground mb-5">
+              <BookOpen className="w-7 h-7" />
+            </div>
+            <h2 className="text-xl font-semibold text-foreground mb-2">
+              {searchQuery ? "No courses found" : "No courses available yet"}
+            </h2>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              {searchQuery
+                ? `No results for "${searchQuery}". Try a different search term.`
+                : "Check back soon — new courses are added regularly."}
+            </p>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="mt-5 h-9 px-5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-secondary transition-all"
+              >
+                Clear Search
+              </button>
+            )}
           </div>
         )}
       </div>

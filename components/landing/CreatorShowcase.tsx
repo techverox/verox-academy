@@ -7,23 +7,23 @@ import { Button } from "@/components/ui/Button";
 
 const creators = [
   {
-    name: "Alex River",
-    role: "Fullstack Architect",
-    earnings: "$45k/mo",
+    name: "Arjun Sharma",
+    role: "Full-Stack Developer",
+    earnings: "₹3.5L/mo",
     image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop",
     verified: true,
   },
   {
-    name: "Sarah Chen",
-    role: "UX Strategy Lead",
-    earnings: "$32k/mo",
+    name: "Priya Nair",
+    role: "UX Designer & Educator",
+    earnings: "₹2.2L/mo",
     image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
     verified: true,
   },
   {
-    name: "Marcus Thorne",
+    name: "Rohan Mehta",
     role: "Product Designer",
-    earnings: "$28k/mo",
+    earnings: "₹1.8L/mo",
     image: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop",
     verified: true,
   },
@@ -31,21 +31,30 @@ const creators = [
 
 export default function CreatorShowcase() {
   return (
-    <section className="py-32 bg-background relative overflow-hidden">
-      <div className="absolute left-0 bottom-0 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-[120px] pointer-events-none" />
-      
-      <div className="container mx-auto px-4 text-center relative z-10">
-        <motion.h2 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-4xl md:text-6xl font-black mb-20 tracking-tighter text-foreground"
-        >
-          THE <span className="bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">CREATOR</span> ECONOMY ENGINE
-        </motion.h2>
+    <section className="py-16 bg-background">
+      <div className="container mx-auto px-6 max-w-7xl">
+        <div className="text-center mb-12">
+          <motion.h2
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-2xl md:text-3xl font-bold tracking-tight text-foreground mb-3"
+          >
+            Creators earning on Verox Academy
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-sm text-muted-foreground max-w-lg mx-auto"
+          >
+            Thousands of educators and subject-matter experts are building successful teaching businesses on our platform.
+          </motion.p>
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto mb-24">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
           {creators.map((creator, index) => (
             <motion.div
               key={creator.name}
@@ -53,7 +62,7 @@ export default function CreatorShowcase() {
               whileInView={{ opacity: 1, scale: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: index * 0.15 }}
-              className="glass p-10 rounded-[2rem] text-center flex flex-col items-center border-border/50 bg-card/60 backdrop-blur-md shadow-lg hover:shadow-2xl hover:border-primary/40 transition-all duration-500 hover:-translate-y-2 relative"
+              className="bg-card border border-border p-8 rounded-xl text-center flex flex-col items-center hover:shadow-md hover:border-border/60 transition-all duration-200"
             >
               <div className="relative w-28 h-28 mb-6 group">
                 <Image
@@ -80,28 +89,27 @@ export default function CreatorShowcase() {
           ))}
         </div>
 
-        <motion.div 
-          initial={{ opacity: 0, y: 30 }}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.7 }}
-          className="max-w-4xl mx-auto glass p-10 md:p-12 rounded-[2.5rem] border border-primary/20 text-left bg-card/40 backdrop-blur-xl shadow-2xl relative overflow-hidden"
+          transition={{ duration: 0.5 }}
+          className="bg-card border border-border rounded-xl p-8 md:p-10 text-left"
         >
-          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
-          <div className="flex flex-col md:flex-row items-center gap-12 relative z-10">
-            <div className="flex-1 text-center md:text-left">
-              <h3 className="text-3xl font-black mb-4 text-foreground tracking-tight">READY TO SCALE?</h3>
-              <p className="text-muted-foreground mb-8 text-lg leading-relaxed">
-                Join the Verox Creator Program and keep 80% of your course revenue. 
-                Get professional tools, dedicated support, and access to a global student base.
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            <div className="flex-1">
+              <h3 className="text-xl font-bold mb-3 text-foreground tracking-tight">Ready to start teaching?</h3>
+              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                Join the Verox Creator Program and keep 80% of your course revenue.
+                Get professional tools, support, and access to our growing student base.
               </p>
               <Link href="/become-creator">
-                <Button size="lg" className="rounded-full px-10 h-14 text-lg font-bold shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-1 transition-all">Start Your Academy</Button>
+                <Button size="sm" className="rounded-lg font-semibold">Start Your Academy</Button>
               </Link>
             </div>
-            <div className="flex items-center gap-6 bg-background/50 p-6 rounded-3xl border border-border/50">
-              <div className="w-20 h-20 rounded-2xl bg-card border border-border flex items-center justify-center font-black text-primary italic text-3xl shadow-inner">80%</div>
-              <div className="text-sm font-black text-muted-foreground uppercase tracking-widest">Creator<br />Share</div>
+            <div className="flex items-center gap-4 bg-secondary/50 p-5 rounded-xl border border-border">
+              <div className="w-16 h-16 rounded-xl bg-card border border-border flex items-center justify-center font-bold text-primary text-2xl">80%</div>
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Creator<br />Revenue Share</div>
             </div>
           </div>
         </motion.div>

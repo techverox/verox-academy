@@ -15,7 +15,7 @@ const faqs = [
   },
   {
     question: "How do I get paid?",
-    answer: "Payouts are processed automatically every week via our secure payment partners once you reach the minimum threshold of $50.",
+    answer: "Payouts are processed every week via secure payment partners once you reach the minimum threshold of ₹4,000.",
   },
   {
     question: "Can I host my videos on Verox?",
@@ -31,46 +31,55 @@ export default function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
   return (
-    <section className="py-32 bg-secondary/10 relative overflow-hidden">
-      {/* Decorative gradient */}
-      <div className="absolute left-1/2 top-0 -translate-x-1/2 w-full max-w-3xl h-[400px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
-      
-      <div className="container mx-auto px-4 max-w-4xl relative z-10">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-20"
-        >
-          <h2 className="text-4xl md:text-6xl font-black mb-6 tracking-tight text-foreground">
-            FREQUENTLY ASKED <span className="text-primary">QUESTIONS</span>
-          </h2>
-          <p className="text-muted-foreground text-lg md:text-xl font-medium">Everything you need to know about the platform.</p>
-        </motion.div>
+    <section className="py-16 bg-secondary/20">
+      <div className="container mx-auto px-6 max-w-3xl">
+        <div className="text-center mb-10">
+          <motion.h2
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-2xl md:text-3xl font-bold tracking-tight text-foreground mb-3"
+          >
+            Frequently Asked Questions
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="text-sm text-muted-foreground"
+          >
+            Everything you need to know about the platform.
+          </motion.p>
+        </div>
 
-        <div className="space-y-6">
+        <div className="space-y-3">
           {faqs.map((faq, index) => (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 12 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
+              transition={{ duration: 0.4, delay: index * 0.07 }}
               key={index}
-              className={`border rounded-3xl overflow-hidden transition-all duration-300 ${openIndex === index ? 'border-primary/30 bg-card/60 shadow-lg shadow-primary/5' : 'border-border/50 bg-card/30 hover:border-primary/20 hover:bg-card/50'} backdrop-blur-md`}
+              className={`border rounded-xl overflow-hidden transition-all duration-200 ${
+                openIndex === index
+                  ? 'border-primary/30 bg-card shadow-sm'
+                  : 'border-border bg-card hover:border-border/80'
+              }`}
             >
               <button
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                className="w-full flex items-center justify-between p-8 text-left transition-colors"
+                className="w-full flex items-center justify-between p-5 text-left"
               >
-                <span className={`font-bold text-xl md:text-2xl transition-colors ${openIndex === index ? 'text-primary' : 'text-foreground'}`}>
+                <span className={`font-semibold text-sm transition-colors ${openIndex === index ? 'text-primary' : 'text-foreground'}`}>
                   {faq.question}
                 </span>
-                <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-colors ${openIndex === index ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
+                <div className={`shrink-0 w-7 h-7 rounded-full flex items-center justify-center transition-colors ml-3 ${openIndex === index ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'}`}>
                   {openIndex === index ? (
-                    <Minus className="w-5 h-5" />
+                    <Minus className="w-3.5 h-3.5" />
                   ) : (
-                    <Plus className="w-5 h-5" />
+                    <Plus className="w-3.5 h-3.5" />
                   )}
                 </div>
               </button>
@@ -80,9 +89,9 @@ export default function FAQ() {
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
                   >
-                    <div className="px-8 pb-8 text-muted-foreground text-lg leading-relaxed font-medium">
+                    <div className="px-5 pb-5 text-sm text-muted-foreground leading-relaxed">
                       {faq.answer}
                     </div>
                   </motion.div>
