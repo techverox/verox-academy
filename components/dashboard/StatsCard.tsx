@@ -11,26 +11,26 @@ interface StatsCardProps {
 
 export function StatsCard({ title, value, icon: Icon, trend, trendType = "positive" }: StatsCardProps) {
   return (
-    <Card className="p-6 group hover:border-primary/30 transition-all duration-300">
+    <Card className="p-6 group hover:border-primary/30 transition-all duration-300 shadow-sm hover:shadow-md bg-card">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-secondary-text">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">
             {title}
           </p>
-          <p className="text-3xl font-black text-white">{value}</p>
+          <p className="text-3xl font-black text-foreground">{value}</p>
         </div>
-        <div className="h-12 w-12 rounded-2xl bg-muted/50 border border-border flex items-center justify-center text-primary group-hover:scale-110 group-hover:bg-primary/10 transition-all">
+        <div className="h-12 w-12 rounded-2xl bg-secondary/50 border border-border flex items-center justify-center text-primary group-hover:scale-110 group-hover:bg-primary/10 transition-all shadow-sm">
           <Icon className="h-6 w-6" />
         </div>
       </div>
       {trend && (
         <div className="mt-4 flex items-center gap-2">
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-            trendType === "positive" ? "bg-success/10 text-success" : "bg-danger/10 text-danger"
+            trendType === "positive" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
           }`}>
             {trend}
           </span>
-          <span className="text-[10px] text-secondary-text font-medium uppercase tracking-wider">vs last month</span>
+          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">vs last month</span>
         </div>
       )}
     </Card>

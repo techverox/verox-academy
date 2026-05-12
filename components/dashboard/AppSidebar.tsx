@@ -37,18 +37,18 @@ export default function AppSidebar() {
 
   return (
     <aside 
-      className={`fixed left-0 top-0 z-40 h-screen bg-sidebar border-r border-border transition-all duration-300 ease-in-out hidden lg:flex flex-col ${
+      className={`fixed left-0 top-0 z-40 h-screen bg-sidebar-bg border-r border-border transition-all duration-300 ease-in-out hidden lg:flex flex-col shadow-sm ${
         isCollapsed ? "w-20" : "w-[260px]"
       }`}
     >
       {/* Logo Section */}
       <div className="h-20 flex items-center px-6 border-b border-border/50">
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-black text-xl shadow-lg shadow-primary/20 group-hover:scale-110 transition-transform">
+          <div className="w-9 h-9 rounded-xl bg-foreground flex items-center justify-center text-background font-black text-xl shadow-lg transition-transform group-hover:scale-105">
             V
           </div>
           {!isCollapsed && (
-            <span className="font-bold text-lg tracking-tight text-white transition-opacity duration-300">
+            <span className="font-bold text-lg tracking-tight text-foreground transition-opacity duration-300">
               Verox Academy
             </span>
           )}
@@ -57,22 +57,22 @@ export default function AppSidebar() {
 
       {/* Navigation Section */}
       <div className="flex-1 overflow-y-auto py-8 px-4 scrollbar-hide">
-        <div className="space-y-1">
+        <div className="space-y-2">
           {menuItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
+                className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group font-medium ${
                   isActive 
-                    ? "bg-primary/10 text-primary border border-primary/20" 
-                    : "text-secondary-text hover:bg-muted hover:text-white"
+                    ? "bg-primary/10 text-primary border border-primary/10 shadow-sm" 
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground border border-transparent"
                 }`}
               >
                 <item.icon className={`w-5 h-5 ${isActive ? "text-primary" : "group-hover:scale-110 transition-transform"}`} />
                 {!isCollapsed && (
-                  <span className="font-medium text-sm">{item.name}</span>
+                  <span className="text-sm">{item.name}</span>
                 )}
                 {isActive && !isCollapsed && (
                   <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary shadow-[0_0_8px_var(--primary)]" />
@@ -85,11 +85,11 @@ export default function AppSidebar() {
           {(profile?.role === 'creator' || profile?.role === 'admin') && (
             <Link
               href="/creator"
-              className="mt-6 flex items-center gap-3 px-4 py-3 rounded-xl bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/20 text-primary hover:from-primary/30 hover:to-primary/10 transition-all group animate-in slide-in-from-left duration-500"
+              className="mt-8 flex items-center gap-3 px-4 py-3.5 rounded-xl bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/20 text-primary hover:from-primary/30 hover:to-primary/10 transition-all group shadow-sm hover:shadow-md"
             >
               <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
               {!isCollapsed && (
-                <span className="font-black text-sm uppercase tracking-tighter italic">CREATOR STUDIO</span>
+                <span className="font-black text-sm uppercase tracking-wider">CREATOR STUDIO</span>
               )}
             </Link>
           )}
@@ -97,14 +97,14 @@ export default function AppSidebar() {
 
         {/* Upgrade Card (Only if not collapsed) */}
         {!isCollapsed && (
-          <div className="mt-10 p-5 rounded-2xl bg-gradient-to-br from-primary/20 via-primary/5 to-transparent border border-primary/10 relative overflow-hidden group">
-            <div className="absolute -right-4 -top-4 w-20 h-20 bg-primary/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
-            <Sparkles className="w-5 h-5 text-primary mb-3" />
-            <h4 className="text-sm font-bold text-white mb-1">Go Premium</h4>
-            <p className="text-[10px] text-secondary-text leading-relaxed mb-4">
-              Unlock exclusive courses and certificates today.
+          <div className="mt-12 p-6 rounded-3xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 relative overflow-hidden group shadow-sm">
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-primary/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
+            <Sparkles className="w-6 h-6 text-primary mb-4" />
+            <h4 className="text-base font-bold text-foreground mb-2">Go Premium</h4>
+            <p className="text-xs text-muted-foreground leading-relaxed mb-6 font-medium">
+              Unlock exclusive courses, certificates, and premium mentoring today.
             </p>
-            <button className="w-full py-2 bg-primary text-white text-[10px] font-black uppercase tracking-wider rounded-lg hover:bg-primary-hover transition-colors">
+            <button className="w-full py-3 bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all">
               Upgrade Now
             </button>
           </div>
@@ -112,10 +112,10 @@ export default function AppSidebar() {
       </div>
 
       {/* User & Toggle Section */}
-      <div className="p-4 border-t border-border/50 space-y-4">
+      <div className="p-4 border-t border-border/50 space-y-4 bg-sidebar-bg/50 backdrop-blur-md">
         {!isCollapsed && (
           <div className="flex items-center gap-3 px-2 py-2">
-            <div className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center text-primary font-bold text-sm overflow-hidden">
+            <div className="w-10 h-10 rounded-full bg-secondary border border-border flex items-center justify-center text-primary font-bold text-sm overflow-hidden shadow-sm">
               {profile?.photoURL ? (
                 <img src={profile.photoURL} alt={profile.name || ""} referrerPolicy="no-referrer" className="w-full h-full object-cover" />
               ) : (
@@ -123,8 +123,8 @@ export default function AppSidebar() {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-white truncate">{profile?.name || "Student"}</p>
-              <p className="text-[10px] text-secondary-text truncate uppercase tracking-widest">{profile?.role || "Basic Plan"}</p>
+              <p className="text-sm font-bold text-foreground truncate">{profile?.name || "Student"}</p>
+              <p className="text-[10px] text-muted-foreground truncate uppercase tracking-widest font-bold">{profile?.role || "Basic Plan"}</p>
             </div>
           </div>
         )}
@@ -132,19 +132,19 @@ export default function AppSidebar() {
         <div className="flex items-center gap-2">
           <button 
             onClick={handleLogout}
-            className={`flex items-center gap-3 text-secondary-text hover:text-danger hover:bg-danger/10 p-3 rounded-xl transition-all w-full ${
+            className={`flex items-center gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 p-3 rounded-xl transition-all w-full font-medium ${
               isCollapsed ? "justify-center" : ""
             }`}
           >
             <LogOut className="w-5 h-5" />
-            {!isCollapsed && <span className="text-sm font-semibold">Log out</span>}
+            {!isCollapsed && <span className="text-sm">Log out</span>}
           </button>
           
           <button 
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-2 hover:bg-muted rounded-lg text-secondary-text transition-colors ml-auto hidden lg:block"
+            className="p-3 hover:bg-secondary rounded-xl text-muted-foreground transition-colors ml-auto hidden lg:block"
           >
-            {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            {isCollapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
           </button>
         </div>
       </div>

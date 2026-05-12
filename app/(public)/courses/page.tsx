@@ -4,8 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import CourseCard from "@/components/CourseCard";
 import { getCourses } from "@/lib/firestore";
 import { Course } from "@/types/firestore";
-import { Search, Sparkles, RefreshCcw } from "lucide-react";
-import { Button } from "@/components/ui/Button";
+import { Search, Sparkles, RefreshCcw, Layers, Filter } from "lucide-react";
 
 export default function CoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
@@ -21,7 +20,7 @@ export default function CoursesPage() {
       setCourses(data);
     } catch (err: any) {
       console.error("Error fetching courses:", err);
-      setError("Unable to connect to the classroom. Please check your internet connection.");
+      setError("Synchronisation with the central registry failed. Verify your neural link.");
     } finally {
       setLoading(false);
     }
@@ -31,79 +30,86 @@ export default function CoursesPage() {
     fetchCourses();
   }, [fetchCourses, retryCount]);
 
-  const handleRetry = () => {
-    setRetryCount(prev => prev + 1);
-  };
-
   return (
-    <main className="container mx-auto px-6 py-20 lg:px-12 lg:py-32">
-      {/* Page Header */}
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-[0.3em]">
-            <Sparkles className="w-4 h-4" />
-            Academy Catalog
-          </div>
-          <h1 className="text-5xl font-black tracking-tight text-white md:text-7xl">
-            Explore Courses
-          </h1>
-          <p className="max-w-2xl text-xl font-medium text-secondary-text">
-            Professional Indian creator-style courses designed to turn you into a high-paid professional.
-          </p>
-        </div>
+    <main className="min-h-screen bg-background pb-32">
+      {/* Cinematic Header */}
+      <div className="relative pt-40 pb-20 overflow-hidden">
+         <div className="absolute inset-0 -z-10 bg-linear-to-b from-primary/5 to-transparent" />
+         <div className="container mx-auto px-8 max-w-7xl">
+            <div className="space-y-6 max-w-4xl">
+               <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-primary/10 border border-primary/20 text-[10px] font-black uppercase tracking-[0.3em] text-primary">
+                  <Layers className="w-4 h-4" />
+                  The Archival Registry
+               </div>
+               <h1 className="text-7xl md:text-9xl font-black tracking-tight text-foreground leading-[0.9]">
+                  CURATED <br />
+                  <span className="text-primary italic">INTELLIGENCE.</span>
+               </h1>
+               <p className="text-xl md:text-2xl font-medium text-muted-foreground leading-relaxed max-w-2xl">
+                  Access the world's most sophisticated curriculum. Engineered for those who refuse to settle for mediocrity.
+               </p>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="mt-20 flex flex-col md:flex-row items-center gap-6 border-b border-border/50 pb-10">
+               <div className="flex-1 relative w-full group">
+                  <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <input 
+                    type="text" 
+                    placeholder="Search the registry..." 
+                    className="w-full h-16 pl-16 pr-8 rounded-2xl bg-secondary/50 border border-border/50 focus:border-primary/50 focus:bg-card transition-all outline-none text-sm font-bold placeholder:text-muted-foreground/60"
+                  />
+               </div>
+               <button className="btn-secondary-premium h-16 px-10">
+                  <Filter className="w-4 h-4" />
+                  Refine Search
+               </button>
+            </div>
+         </div>
       </div>
 
-      {/* Loading State */}
-      {loading && (
-        <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="aspect-[4/5] animate-pulse rounded-2xl bg-muted/20 border border-border/50" />
-          ))}
-        </div>
-      )}
-
-      {/* Error State */}
-      {!loading && error && (
-        <div className="mt-32 flex flex-col items-center justify-center text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-danger/10 text-danger border border-danger/20">
-             <RefreshCcw className="w-8 h-8" />
+      {/* Main Registry Grid */}
+      <div className="container mx-auto px-8 max-w-7xl mt-12">
+        {loading ? (
+          <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="aspect-4/5 animate-pulse rounded-4xl bg-secondary/50 border border-border/50" />
+            ))}
           </div>
-          <h3 className="mt-8 text-2xl font-bold text-white">Connection Issue</h3>
-          <p className="mt-4 max-w-sm text-secondary-text font-medium">{error}</p>
-          <Button
-            onClick={handleRetry}
-            className="mt-10"
-            size="lg"
-          >
-            Retry Connection
-          </Button>
-        </div>
-      )}
-
-      {/* Course Grid */}
-      {!loading && !error && courses.length > 0 && (
-        <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-          {courses.map((course) => (
-            <CourseCard key={course.id} course={course} />
-          ))}
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!loading && !error && courses.length === 0 && (
-        <div className="mt-32 flex flex-col items-center justify-center text-center py-20 px-4 rounded-3xl border border-dashed border-border bg-muted/5">
-          <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-muted text-zinc-500 mb-8">
-            <Search className="h-10 w-10" />
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center text-center py-32 space-y-8 bg-card rounded-5xl border border-destructive/20 shadow-2xl">
+            <div className="w-24 h-24 rounded-3xl bg-destructive/10 flex items-center justify-center text-destructive">
+               <RefreshCcw className="w-12 h-12" />
+            </div>
+            <div className="space-y-4">
+               <h3 className="text-3xl font-black tracking-tight">Sync Error</h3>
+               <p className="text-muted-foreground font-medium max-w-sm">{error}</p>
+            </div>
+            <button 
+              onClick={() => setRetryCount(c => c + 1)}
+              className="btn-premium h-16 px-12 rounded-2xl bg-destructive text-destructive-foreground shadow-xl shadow-destructive/20 hover:scale-105"
+            >
+              Retry Protocol
+            </button>
           </div>
-          <h2 className="text-3xl font-black tracking-tight text-white">Courses Coming Soon</h2>
-          <p className="mt-4 max-w-sm text-lg font-medium text-secondary-text">
-            We&apos;re currently preparing a selection of world-class courses for you.
-          </p>
-          <Button className="mt-10" size="lg">
-            Notify Me
-          </Button>
-        </div>
-      )}
+        ) : courses.length > 0 ? (
+          <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-3">
+            {courses.map((course) => (
+              <CourseCard key={course.id} course={course} />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center text-center py-40 border border-dashed border-border/50 rounded-5xl bg-secondary/20">
+            <div className="w-20 h-20 rounded-2xl bg-secondary flex items-center justify-center text-muted-foreground mb-10">
+               <Layers className="w-10 h-10" />
+            </div>
+            <h2 className="text-4xl font-black tracking-tight mb-4">Registry Empty</h2>
+            <p className="text-xl text-muted-foreground font-medium max-w-md">
+               No courses have been authorized for public release yet. Check back soon.
+            </p>
+          </div>
+        )}
+      </div>
     </main>
   );
 }

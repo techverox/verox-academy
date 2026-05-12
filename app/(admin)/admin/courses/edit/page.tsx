@@ -1,5 +1,5 @@
-import EditClient from "./EditClient";
+import CourseEditor from "@/components/courses/CourseEditor";
 
 export default function AdminEditPage() {
-  return <EditClient />;
+  return <CourseEditor basePath="/admin/courses" />;
 }

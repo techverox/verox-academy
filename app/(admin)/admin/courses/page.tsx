@@ -15,7 +15,8 @@ import {
   BookOpen, 
   CheckCircle2, 
   XCircle,
-  MoreVertical
+  MoreVertical,
+  Plus
 } from "lucide-react";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { useAuth } from "@/context/auth-context";
@@ -107,122 +108,129 @@ export default function AdminCoursesPage() {
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="max-w-7xl mx-auto space-y-8 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black tracking-tight text-zinc-900 dark:text-zinc-50">Content Management</h1>
-          <p className="text-zinc-500 font-medium mt-1">Full control over all platform courses and curriculum.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Course Management</h1>
+          <p className="mt-2 text-sm text-muted-foreground max-w-2xl">Manage all courses and educational content across the platform.</p>
         </div>
         
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+        <div className="flex flex-col md:flex-row items-center gap-4">
+          <div className="relative group w-full md:w-auto">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50 group-focus-within:text-primary transition-colors" />
             <input 
               type="text" 
-              placeholder="Search courses..." 
+              placeholder="Search Ledger..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all w-full md:w-64"
+              className="pl-12 pr-6 py-4 bg-secondary/30 border border-border rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-primary/5 transition-all text-foreground placeholder:text-muted-foreground/30 focus:border-primary/50 w-full md:w-72 shadow-sm"
             />
           </div>
           <Link
             href="/admin/courses/add"
-            className="h-11 px-6 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-black uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg flex items-center gap-2"
+            className="group h-11 px-6 bg-primary text-primary-foreground text-xs font-bold rounded-lg hover:bg-primary/90 transition-all shadow-sm flex items-center gap-2 w-full md:w-auto justify-center"
           >
-            Create Course
+            <Plus className="w-4 h-4" />
+            Add Course
           </Link>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-[2.5rem] overflow-hidden shadow-sm">
+      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-zinc-100 dark:border-zinc-900 bg-zinc-50/50 dark:bg-zinc-900/50">
-                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Course & Instructor</th>
-                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Price</th>
-                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-zinc-400">Status</th>
-                <th className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-zinc-400 text-right">Actions</th>
+              <tr className="border-b border-border bg-secondary/20">
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Course & Instructor</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-center">Price</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Status</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-900">
+            <tbody className="divide-y divide-border">
               {loading ? (
                 [...Array(3)].map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    <td colSpan={4} className="px-8 py-10 h-24 bg-zinc-50/30 dark:bg-zinc-900/30" />
+                    <td colSpan={4} className="px-8 py-10 h-24 bg-secondary/30" />
                   </tr>
                 ))
               ) : filteredCourses.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-8 py-20 text-center text-zinc-500 font-medium">
+                  <td colSpan={4} className="px-8 py-20 text-center text-muted-foreground font-medium">
                     No courses found matching your criteria.
                   </td>
                 </tr>
               ) : (
                 filteredCourses.map((course) => (
-                  <tr key={course.id} className="group hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50 transition-colors">
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-4">
-                        <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
-                          <Image src={course.thumbnail} alt={course.title} fill className="object-cover" />
+                  <tr key={course.id} className="group hover:bg-secondary/50 transition-colors">
+                    <td className="px-10 py-8">
+                      <div className="flex items-center gap-6">
+                        <div className="relative h-14 w-24 shrink-0 overflow-hidden rounded-xl border border-border shadow-inner group/thumb">
+                          <Image src={course.thumbnail} alt={course.title} fill className="object-cover group-hover:scale-110 transition-transform duration-700" />
+                          <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
                         </div>
-                        <div>
-                          <p className="font-bold text-zinc-900 dark:text-zinc-50 line-clamp-1">{course.title}</p>
-                          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">By {course.creatorName || "Unknown"}</p>
+                        <div className="flex flex-col gap-2">
+                          <p className="font-black text-foreground text-base tracking-tight leading-none group-hover:text-primary transition-colors">{course.title}</p>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] bg-secondary px-2.5 py-1 rounded-md shadow-inner border border-border/50">
+                              BY {course.creatorName?.toUpperCase() || "ANONYMOUS"}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-8 py-6">
-                      <span className="font-black text-zinc-900 dark:text-zinc-50">₹{course.price}</span>
+                    <td className="px-10 py-8 text-center">
+                      <span className="text-sm font-black text-primary bg-primary/5 px-4 py-2 rounded-xl border border-primary/10 inline-block shadow-sm">
+                        ₹{course.price}
+                      </span>
                     </td>
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-2">
-                        {course.published ? (
-                          <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-[10px] font-black uppercase tracking-widest">
-                            <CheckCircle2 className="w-3 h-3" /> Live
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-500/10 text-zinc-500 text-[10px] font-black uppercase tracking-widest">
-                            <XCircle className="w-3 h-3" /> Draft
-                          </span>
-                        )}
+                    <td className="px-10 py-8">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-2.5 h-2.5 rounded-full shadow-sm ${
+                          course.published ? "bg-success shadow-success/50" : "bg-muted shadow-muted/50"
+                        }`} />
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${
+                          course.published ? "text-success" : "text-muted-foreground"
+                        }`}>
+                          {course.published ? "Published" : "Draft"}
+                        </span>
                       </div>
                     </td>
-                    <td className="px-8 py-6 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <td className="px-10 py-8 text-right">
+                      <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
                         <Link
                           href={`/admin/courses/curriculum?id=${course.id}`}
-                          title="Manage Curriculum"
-                          className="p-2 text-zinc-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                          className="p-3 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition-all border border-border hover:border-primary/30 shadow-sm"
+                          title="Syllabus Engineering"
                         >
-                          <Layout className="w-5 h-5" />
+                          <Layout className="w-4 h-4" />
                         </Link>
                         <Link
                           href={`/admin/courses/edit?id=${course.id}`}
-                          title="Edit Details"
-                          className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all"
+                          className="p-3 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-xl transition-all border border-border shadow-sm"
+                          title="Refine Blueprint"
                         >
-                          <Edit3 className="w-5 h-5" />
+                          <Edit3 className="w-4 h-4" />
                         </Link>
                         <button
                           onClick={() => handleTogglePublish(course.id, course.published)}
                           disabled={processingId === course.id}
-                          className={`p-2 rounded-lg transition-all ${
+                          className={`p-3 rounded-xl transition-all border shadow-sm ${
                             course.published 
-                              ? "text-zinc-400 hover:text-amber-500 hover:bg-amber-500/10" 
-                              : "text-zinc-400 hover:text-green-500 hover:bg-green-500/10"
+                              ? "text-muted-foreground hover:text-warning hover:bg-warning/10 border-border hover:border-warning/30" 
+                              : "text-muted-foreground hover:text-success hover:bg-success/10 border-border hover:border-success/30"
                           }`}
-                          title={course.published ? "Unpublish" : "Publish"}
+                          title={course.published ? "Halt System" : "Activate"}
                         >
-                          {course.published ? <XCircle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}
+                          {course.published ? <XCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
                         </button>
                         <button
                           onClick={() => handleDeleteRequest(course.id, course.title)}
                           disabled={processingId === course.id}
-                          className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
-                          title="Delete Course"
+                          className="p-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all border border-border hover:border-destructive/30 shadow-sm"
+                          title="Purge Asset"
                         >
-                          <Trash2 className="w-5 h-5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>

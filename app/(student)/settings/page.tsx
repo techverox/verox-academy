@@ -70,7 +70,7 @@ export default function SettingsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Profile Section */}
         <div className="lg:col-span-2 space-y-8">
-          <section className="bg-sidebar border border-border rounded-[2.5rem] p-10 shadow-xl shadow-black/20">
+          <section className="bg-sidebar border border-border rounded-4xl p-10 shadow-xl shadow-black/20">
             <div className="flex items-center gap-4 mb-8">
               <div className="p-3 rounded-2xl bg-primary/10 text-primary">
                 <User className="w-6 h-6" />
@@ -81,7 +81,7 @@ export default function SettingsPage() {
             <form onSubmit={handleUpdate} className="space-y-6">
               <div className="flex flex-col md:flex-row items-start md:items-center gap-8 mb-8">
                 <div className="relative group">
-                  <div className="w-32 h-32 rounded-[2rem] bg-muted border-2 border-border overflow-hidden flex items-center justify-center">
+                  <div className="w-32 h-32 rounded-3xl bg-muted border-2 border-border overflow-hidden flex items-center justify-center">
                     {photoURL ? (
                       <img 
                         src={photoURL} 
@@ -183,7 +183,7 @@ export default function SettingsPage() {
           </section>
 
           {/* Security Summary */}
-          <section className="bg-sidebar border border-border rounded-[2.5rem] p-10 shadow-xl shadow-black/20 overflow-hidden relative group">
+          <section className="bg-sidebar border border-border rounded-4xl p-10 shadow-xl shadow-black/20 overflow-hidden relative group">
             <div className="absolute right-0 top-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-700" />
             
             <div className="flex items-center gap-4 mb-6">
@@ -210,7 +210,7 @@ export default function SettingsPage() {
 
         {/* Sidebar Settings */}
         <div className="space-y-8">
-          <div className="bg-muted border border-border rounded-[2.5rem] p-8 space-y-6">
+          <div className="bg-muted border border-border rounded-4xl p-8 space-y-6">
             <h3 className="font-bold text-white uppercase tracking-widest text-xs">Preferences</h3>
             
             <div className="space-y-4">
@@ -238,7 +238,7 @@ export default function SettingsPage() {
             <p className="text-[10px] text-zinc-500 italic">More settings coming soon to enhance your experience.</p>
           </div>
 
-          <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-danger/20 to-transparent border border-danger/10">
+          <div className="p-8 rounded-4xl bg-linear-to-br from-danger/20 to-transparent border border-danger/10">
             <h3 className="font-bold text-danger text-sm mb-2">Danger Zone</h3>
             <p className="text-xs text-zinc-500 mb-6 leading-relaxed">
               Once you delete your account, there is no going back. Please be certain.

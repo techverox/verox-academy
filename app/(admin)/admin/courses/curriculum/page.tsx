@@ -1,5 +1,5 @@
-import CurriculumClient from "@/app/(admin)/admin/courses/curriculum/CurriculumClient";
+import CurriculumEditor from "@/components/courses/CurriculumEditor";
 
 export default function CurriculumPage() {
-  return <CurriculumClient />;
+  return <CurriculumEditor basePath="/admin/courses" />;
 }

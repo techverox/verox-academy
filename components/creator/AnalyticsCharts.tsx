@@ -30,18 +30,16 @@ export default function AnalyticsCharts({ data, title, type, color = "#7C3AED" }
   }, []);
 
   if (!mounted) return (
-    <div className="bg-zinc-900/30 border border-zinc-800 rounded-[2.5rem] p-8 h-[400px] animate-pulse" />
+    <div className="h-[300px] w-full bg-secondary/10 rounded-lg animate-pulse" />
   );
 
   return (
-    <div className="bg-zinc-900/30 border border-zinc-800 rounded-[2.5rem] p-8">
-      <div className="flex items-center justify-between mb-8">
-        <h3 className="text-xl font-black tracking-tight uppercase text-zinc-400">{title}</h3>
-        <div className="flex items-center gap-2">
-          <span className="w-3 h-3 rounded-full bg-emerald-500" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Live Data</span>
+    <div className="w-full">
+      {title && (
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xs font-bold text-muted-foreground">{title}</h3>
         </div>
-      </div>
+      )}
 
       <div className="h-[300px] w-full">
         <ResponsiveContainer width="100%" height="100%" minWidth={0}>
@@ -53,60 +51,62 @@ export default function AnalyticsCharts({ data, title, type, color = "#7C3AED" }
                   <stop offset="95%" stopColor={color} stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1F2937" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis 
                 dataKey="name" 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{ fill: '#4B5563', fontSize: 10, fontWeight: 800 }}
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 900 }}
                 dy={10}
               />
               <YAxis 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{ fill: '#4B5563', fontSize: 10, fontWeight: 800 }}
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 900 }}
               />
               <Tooltip 
                 contentStyle={{ 
-                  backgroundColor: '#0B0F19', 
-                  borderColor: '#1F2937', 
-                  borderRadius: '1rem',
-                  fontSize: '12px',
-                  fontWeight: 'bold'
+                  backgroundColor: 'hsl(var(--card))', 
+                  borderColor: 'hsl(var(--border))', 
+                  borderRadius: '0.5rem',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                 }} 
               />
               <Area 
                 type="monotone" 
                 dataKey="value" 
                 stroke={color} 
-                strokeWidth={4}
+                strokeWidth={2}
                 fillOpacity={1} 
                 fill="url(#colorValue)" 
               />
             </AreaChart>
           ) : (
             <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#1F2937" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.5} />
               <XAxis 
                 dataKey="name" 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{ fill: '#4B5563', fontSize: 10, fontWeight: 800 }}
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 900 }}
                 dy={10}
               />
               <YAxis 
                 axisLine={false} 
                 tickLine={false} 
-                tick={{ fill: '#4B5563', fontSize: 10, fontWeight: 800 }}
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10, fontWeight: 900 }}
               />
               <Tooltip 
-                cursor={{ fill: 'rgba(124, 58, 237, 0.05)' }}
+                cursor={{ fill: 'hsl(var(--primary))', fillOpacity: 0.05 }}
                 contentStyle={{ 
-                  backgroundColor: '#0B0F19', 
-                  borderColor: '#1F2937', 
-                  borderRadius: '1rem',
+                  backgroundColor: 'hsl(var(--card))', 
+                  borderColor: 'hsl(var(--border))', 
+                  borderRadius: '1.25rem',
                   fontSize: '12px',
-                  fontWeight: 'bold'
+                  fontWeight: '900',
+                  boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
                 }} 
               />
               <Bar dataKey="value" fill={color} radius={[6, 6, 0, 0]}>

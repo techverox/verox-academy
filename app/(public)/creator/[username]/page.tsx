@@ -82,7 +82,7 @@ export default function CreatorPublicProfile({ params }: PageProps) {
       {/* Hero Header */}
       <section className="relative pt-32 pb-20 overflow-hidden border-b border-zinc-800">
         <div className="absolute inset-0 -z-10">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-gradient-to-b from-primary/5 to-transparent" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-linear-to-b from-primary/5 to-transparent" />
         </div>
 
         <div className="container mx-auto px-4">
@@ -189,7 +189,7 @@ export default function CreatorPublicProfile({ params }: PageProps) {
                 </div>
               </div>
 
-              <div className="glass p-6 rounded-3xl border-primary/20">
+              <div className="glass p-6 rounded-4xl border-primary/20">
                 <h4 className="font-bold text-white mb-2">Subscribe to News</h4>
                 <p className="text-xs text-zinc-500 mb-4">Get notified when I publish new courses or articles.</p>
                 <div className="flex flex-col gap-2">
@@ -235,7 +235,7 @@ export default function CreatorPublicProfile({ params }: PageProps) {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-20 border-2 border-dashed border-zinc-800 rounded-3xl">
+                <div className="text-center py-20 border-2 border-dashed border-zinc-800 rounded-4xl">
                   <BookOpen className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
                   <p className="text-zinc-500 font-bold">No courses published yet.</p>
                 </div>
@@ -248,7 +248,7 @@ export default function CreatorPublicProfile({ params }: PageProps) {
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-20 border-2 border-dashed border-zinc-800 rounded-3xl">
+                <div className="text-center py-20 border-2 border-dashed border-zinc-800 rounded-4xl">
                   <Star className="w-12 h-12 text-zinc-700 mx-auto mb-4" />
                   <p className="text-zinc-500 font-bold">No articles published yet.</p>
                 </div>

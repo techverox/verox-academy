@@ -42,8 +42,8 @@ export default function LoginPage() {
 
   if (authLoading || user) {
     return (
-      <div className="flex min-h-[calc(100vh-64px)] items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-zinc-200 border-t-zinc-900" />
+      <div className="flex min-h-[calc(100vh-64px)] items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-border border-t-primary" />
       </div>
     );
   }
@@ -118,69 +118,72 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-[calc(100vh-64px)] items-center justify-center bg-zinc-50 px-4 dark:bg-zinc-950">
-      <div className="w-full max-w-md space-y-8 rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-black">
+    <div className="flex min-h-[calc(100vh-64px)] items-center justify-center bg-background px-4">
+      <div className="w-full max-w-md space-y-8 rounded-xl border border-border bg-card p-8 shadow-sm">
         <div className="text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <div className="mx-auto w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold text-xl mb-6 shadow-sm">
+            V
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">
             Verox Academy
           </h1>
-          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            {isSignUp ? "Create an account to start learning" : "Sign in to access your courses and dashboard"}
+          <p className="mt-2 text-xs text-muted-foreground">
+            {isSignUp ? "Create an account to start learning" : "Sign in to access your courses"}
           </p>
         </div>
 
         <div className="mt-8 space-y-6">
           {error && (
-            <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">
+            <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive font-medium border border-destructive/20 text-center">
               {error}
             </div>
           )}
 
           <form onSubmit={handleEmailAuth} className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Email Address</label>
+              <label className="text-sm font-bold text-foreground">Email Address</label>
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
-                className="mt-1 block w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-50 dark:focus:ring-zinc-50"
+                className="mt-1.5 block w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground transition-all placeholder:text-muted-foreground"
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Password</label>
+              <label className="text-sm font-bold text-foreground">Password</label>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="mt-1 block w-full rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:focus:border-zinc-50 dark:focus:ring-zinc-50"
+                className="mt-1.5 block w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 text-foreground transition-all placeholder:text-muted-foreground"
               />
             </div>
             <Button
               type="submit"
               disabled={loading}
-              className="w-full py-6 text-base font-bold shadow-lg shadow-purple-500/20"
+              className="w-full h-11 text-sm font-bold rounded-lg"
             >
               {loading ? "Please wait..." : isSignUp ? "Create Account" : "Sign In"}
             </Button>
           </form>
 
           <div className="relative flex items-center py-4">
-            <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800"></div>
-            <span className="mx-4 flex-shrink text-xs font-medium uppercase text-zinc-400 dark:text-zinc-600">Or continue with</span>
-            <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800"></div>
+            <div className="grow border-t border-border"></div>
+            <span className="mx-4 shrink text-[10px] font-black uppercase tracking-widest text-muted-foreground">Or continue with</span>
+            <div className="grow border-t border-border"></div>
           </div>
 
           <button
             onClick={handleGoogleLogin}
             disabled={loading}
-            className="flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-semibold text-zinc-700 transition-all hover:bg-zinc-50 hover:shadow-sm disabled:opacity-50 dark:border-zinc-800 dark:bg-black dark:text-zinc-300 dark:hover:bg-zinc-900"
+            className="flex w-full items-center justify-center gap-3 rounded-xl border border-border bg-card px-4 py-3.5 text-sm font-bold text-foreground transition-all hover:bg-secondary hover:shadow-sm disabled:opacity-50"
           >
             {loading ? (
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-400" />
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-primary" />
             ) : (
               <svg className="h-5 w-5" viewBox="0 0 24 24">
                 <path
@@ -207,14 +210,14 @@ export default function LoginPage() {
           <div className="text-center text-sm">
             <button 
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              className="text-muted-foreground hover:text-primary transition-colors font-semibold"
             >
               {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
             </button>
           </div>
         </div>
 
-        <p className="mt-8 text-center text-xs text-zinc-500 dark:text-zinc-600">
+        <p className="mt-8 text-center text-xs text-muted-foreground font-medium">
           By continuing, you agree to our Terms of Service and Privacy Policy.
         </p>
       </div>

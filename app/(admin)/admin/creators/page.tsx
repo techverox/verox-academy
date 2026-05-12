@@ -155,16 +155,16 @@ export default function AdminCreatorsPage() {
     }
   };
 
-  if (authLoading) return <div className="p-8 text-zinc-500 animate-pulse">Checking credentials...</div>;
+  if (authLoading) return <div className="p-8 text-muted-foreground animate-pulse">Checking credentials...</div>;
 
   if (!isAdmin) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mb-6">
+      <div className="flex flex-col items-center justify-center py-20 text-center bg-card rounded-5xl border border-destructive/20 shadow-sm">
+        <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center text-destructive mb-6 shadow-inner">
           <AlertCircle className="w-8 h-8" />
         </div>
-        <h1 className="text-2xl font-black mb-2">Access Denied</h1>
-        <p className="text-zinc-500 max-w-md mb-8">
+        <h1 className="text-2xl font-black mb-2 text-foreground">Access Denied</h1>
+        <p className="text-muted-foreground max-w-md mb-8">
           You do not have the required administrative privileges to view this page. 
           If you were recently granted admin rights, try refreshing your session.
         </p>
@@ -173,7 +173,7 @@ export default function AdminCreatorsPage() {
             await refreshClaims();
             window.location.reload();
           }}
-          className="px-8 py-4 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-black rounded-2xl hover:scale-[1.02] transition-all active:scale-95"
+          className="btn-primary-premium h-14"
         >
           REFRESH PERMISSIONS
         </button>
@@ -182,23 +182,23 @@ export default function AdminCreatorsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black tracking-tight text-zinc-900 dark:text-zinc-50">Creator Management</h1>
-          <p className="text-zinc-500 dark:text-zinc-400 font-medium">Review and manage creator applications.</p>
+          <h1 className="text-3xl font-black tracking-tight text-foreground">Creator Management</h1>
+          <p className="text-muted-foreground font-medium mt-1">Review and manage creator applications.</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input 
               type="text" 
               placeholder="Search applications..." 
-              className="pl-10 pr-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+              className="pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all text-foreground placeholder:text-muted-foreground shadow-sm focus:border-primary"
             />
           </div>
-          <button className="p-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors">
+          <button className="p-2.5 bg-background border border-border rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shadow-sm hover:border-primary/50">
             <Filter className="w-5 h-5" />
           </button>
         </div>
@@ -206,102 +206,102 @@ export default function AdminCreatorsPage() {
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-3xl">
+        <div className="bg-card border border-border p-6 rounded-4xl shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
               <Clock className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-zinc-500 text-sm uppercase tracking-widest">Pending</h3>
+            <h3 className="font-bold text-muted-foreground text-[10px] uppercase tracking-[0.2em]">Pending</h3>
           </div>
-          <p className="text-4xl font-black text-zinc-900 dark:text-zinc-50">
+          <p className="text-4xl font-black text-foreground">
             {applications.filter(a => a.status === "pending").length}
           </p>
         </div>
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-3xl">
+        <div className="bg-card border border-border p-6 rounded-4xl shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
               <ShieldCheck className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-zinc-500 text-sm uppercase tracking-widest">Approved</h3>
+            <h3 className="font-bold text-muted-foreground text-[10px] uppercase tracking-[0.2em]">Approved</h3>
           </div>
-          <p className="text-4xl font-black text-zinc-900 dark:text-zinc-50">
+          <p className="text-4xl font-black text-foreground">
             {applications.filter(a => a.status === "approved").length}
           </p>
         </div>
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-6 rounded-3xl">
+        <div className="bg-card border border-border p-6 rounded-4xl shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-red-500">
+            <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center text-destructive">
               <AlertCircle className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-zinc-500 text-sm uppercase tracking-widest">Rejected</h3>
+            <h3 className="font-bold text-muted-foreground text-[10px] uppercase tracking-[0.2em]">Rejected</h3>
           </div>
-          <p className="text-4xl font-black text-zinc-900 dark:text-zinc-50">
+          <p className="text-4xl font-black text-foreground">
             {applications.filter(a => a.status === "rejected").length}
           </p>
         </div>
       </div>
 
       {/* Applications Table */}
-      <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden">
+      <div className="bg-card border border-border rounded-4xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-zinc-400">Creator</th>
-                <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-zinc-400">Category</th>
-                <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-zinc-400">Status</th>
-                <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-zinc-400 text-right">Actions</th>
+              <tr className="border-b border-border bg-secondary/50">
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Creator</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Category</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Status</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
+            <tbody className="divide-y divide-border">
               {loading ? (
                 <tr>
                   <td colSpan={4} className="px-6 py-12 text-center">
-                    <div className="flex items-center justify-center gap-3 text-zinc-500">
-                      <div className="w-5 h-5 border-2 border-zinc-500/20 border-t-zinc-500 rounded-full animate-spin" />
+                    <div className="flex items-center justify-center gap-3 text-muted-foreground">
+                      <div className="w-5 h-5 border-2 border-muted-foreground/20 border-t-primary rounded-full animate-spin" />
                       Loading applications...
                     </div>
                   </td>
                 </tr>
               ) : applications.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-zinc-500">
+                  <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground font-medium">
                     No applications found.
                   </td>
                 </tr>
               ) : (
                 applications.map((app) => (
-                  <tr key={app.id} className="group hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                  <tr key={app.id} className="group hover:bg-secondary/50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="font-bold text-zinc-900 dark:text-zinc-50">{app.fullName}</span>
-                        <span className="text-xs text-zinc-500">{app.email}</span>
+                        <span className="font-bold text-foreground line-clamp-1">{app.fullName}</span>
+                        <span className="text-[10px] font-medium text-muted-foreground mt-0.5">{app.email}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-2 py-1 rounded-md bg-zinc-100 dark:bg-zinc-800 text-[10px] font-black uppercase tracking-tighter text-zinc-600 dark:text-zinc-400">
+                      <span className="px-3 py-1 rounded-full bg-background border border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground shadow-sm inline-block">
                         {app.category}
                       </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          app.status === "pending" ? "bg-blue-500 animate-pulse" :
-                          app.status === "approved" ? "bg-green-500" : "bg-red-500"
+                        <div className={`w-2 h-2 rounded-full shadow-sm ${
+                          app.status === "pending" ? "bg-blue-500 animate-pulse shadow-blue-500/50" :
+                          app.status === "approved" ? "bg-emerald-500 shadow-emerald-500/50" : "bg-destructive shadow-destructive/50"
                         }`} />
-                        <span className={`text-xs font-bold uppercase tracking-widest ${
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${
                           app.status === "pending" ? "text-blue-500" :
-                          app.status === "approved" ? "text-green-500" : "text-red-500"
+                          app.status === "approved" ? "text-emerald-500" : "text-destructive"
                         }`}>
                           {app.status}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                           onClick={() => setSelectedApp(app)}
-                          className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors"
+                          className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors rounded-xl"
                           title="View Details"
                         >
                           <Eye className="w-5 h-5" />
@@ -312,7 +312,7 @@ export default function AdminCreatorsPage() {
                             <button 
                               onClick={() => handleApprove(app.id)}
                               disabled={processingId === app.id}
-                              className="p-2 text-green-500 hover:bg-green-500/10 rounded-lg transition-all disabled:opacity-50"
+                              className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all disabled:opacity-50 border border-transparent hover:border-emerald-500/20"
                               title="Approve"
                             >
                               <Check className="w-5 h-5" />
@@ -322,7 +322,7 @@ export default function AdminCreatorsPage() {
                             <button 
                               onClick={() => setShowRejectModal(app.id)}
                               disabled={processingId === app.id}
-                              className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-50"
+                              className="p-2 text-destructive hover:bg-destructive/10 rounded-xl transition-all disabled:opacity-50 border border-transparent hover:border-destructive/20"
                               title="Reject"
                             >
                               <X className="w-5 h-5" />
@@ -331,7 +331,7 @@ export default function AdminCreatorsPage() {
                           <button 
                             onClick={() => handleDelete(app.id)}
                             disabled={processingId === app.id}
-                            className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all disabled:opacity-50"
+                            className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all disabled:opacity-50 border border-transparent hover:border-destructive/20"
                             title="Delete"
                           >
                             <Trash2 className="w-5 h-5" />
@@ -349,13 +349,13 @@ export default function AdminCreatorsPage() {
 
       {/* Application Details Modal */}
       {selectedApp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm overflow-y-auto">
-          <div className="w-full max-w-2xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-6 sm:p-8 shadow-2xl my-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-background/80 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-2xl bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-2xl my-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-black tracking-tight">Application Details</h2>
+              <h2 className="text-2xl font-black tracking-tight text-foreground">Application Details</h2>
               <button 
                 onClick={() => setSelectedApp(null)}
-                className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900"
+                className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-secondary"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -364,24 +364,24 @@ export default function AdminCreatorsPage() {
             <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Applicant Name</label>
-                  <p className="font-medium text-zinc-900 dark:text-zinc-50">{selectedApp.fullName}</p>
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Applicant Name</label>
+                  <p className="font-bold text-foreground">{selectedApp.fullName}</p>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Email Address</label>
-                  <p className="font-medium text-zinc-900 dark:text-zinc-50">{selectedApp.email}</p>
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Email Address</label>
+                  <p className="font-medium text-foreground">{selectedApp.email}</p>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Category</label>
-                  <span className="px-3 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-xs font-black uppercase tracking-widest text-zinc-600 dark:text-zinc-400 inline-block">
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Category</label>
+                  <span className="px-3 py-1 rounded-full bg-background border border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground shadow-sm inline-block">
                     {selectedApp.category}
                   </span>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Status</label>
-                  <span className={`text-sm font-bold uppercase tracking-widest ${
-                    selectedApp.status === "pending" ? "text-blue-500" :
-                    selectedApp.status === "approved" ? "text-green-500" : "text-red-500"
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Status</label>
+                  <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border inline-block shadow-sm ${
+                    selectedApp.status === "pending" ? "text-blue-500 bg-blue-500/10 border-blue-500/20" :
+                    selectedApp.status === "approved" ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" : "text-destructive bg-destructive/10 border-destructive/20"
                   }`}>
                     {selectedApp.status}
                   </span>
@@ -389,18 +389,18 @@ export default function AdminCreatorsPage() {
               </div>
 
               <div>
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-1">Portfolio Link</label>
-                <a href={selectedApp.portfolioUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline font-medium break-all">
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Portfolio Link</label>
+                <a href={selectedApp.portfolioUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium break-all">
                   {selectedApp.portfolioUrl}
                 </a>
               </div>
 
               {selectedApp.socialLinks && Object.keys(selectedApp.socialLinks).length > 0 && (
                 <div>
-                  <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-2">Social Links</label>
+                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">Social Links</label>
                   <div className="flex flex-wrap gap-4">
                     {Object.entries(selectedApp.socialLinks).map(([platform, link]) => link ? (
-                      <a key={platform} href={link as string} target="_blank" rel="noopener noreferrer" className="text-sm font-medium capitalize text-zinc-700 dark:text-zinc-300 hover:text-blue-500 transition-colors">
+                      <a key={platform} href={link as string} target="_blank" rel="noopener noreferrer" className="text-sm font-bold capitalize text-muted-foreground hover:text-primary transition-colors bg-secondary px-3 py-1.5 rounded-lg">
                         {platform}
                       </a>
                     ) : null)}
@@ -409,51 +409,51 @@ export default function AdminCreatorsPage() {
               )}
 
               <div>
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-2">Bio / Introduction</label>
-                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">{selectedApp.bio}</p>
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">Bio / Introduction</label>
+                <div className="p-4 rounded-2xl bg-secondary/50 border border-border shadow-inner">
+                  <p className="text-sm text-foreground leading-relaxed">{selectedApp.bio}</p>
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-2">Expertise</label>
-                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">{selectedApp.expertise}</p>
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">Expertise</label>
+                <div className="p-4 rounded-2xl bg-secondary/50 border border-border shadow-inner">
+                  <p className="text-sm text-foreground leading-relaxed">{selectedApp.expertise}</p>
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-2">Sample Course Idea</label>
-                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">{selectedApp.sampleCourseIdea}</p>
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">Sample Course Idea</label>
+                <div className="p-4 rounded-2xl bg-secondary/50 border border-border shadow-inner">
+                  <p className="text-sm text-foreground leading-relaxed">{selectedApp.sampleCourseIdea}</p>
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider block mb-2">Why Join Verox Academy?</label>
-                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
-                  <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">{selectedApp.whyJoin}</p>
+                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">Why Join Verox Academy?</label>
+                <div className="p-4 rounded-2xl bg-secondary/50 border border-border shadow-inner">
+                  <p className="text-sm text-foreground leading-relaxed">{selectedApp.whyJoin}</p>
                 </div>
               </div>
 
               {selectedApp.status === "rejected" && selectedApp.rejectionReason && (
                 <div>
-                  <label className="text-xs font-bold text-red-500 uppercase tracking-wider block mb-2">Rejection Reason</label>
-                  <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50">
-                    <p className="text-sm text-red-700 dark:text-red-400 leading-relaxed">{selectedApp.rejectionReason}</p>
+                  <label className="text-[10px] font-black text-destructive uppercase tracking-widest block mb-2">Rejection Reason</label>
+                  <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 shadow-inner">
+                    <p className="text-sm text-destructive leading-relaxed font-medium">{selectedApp.rejectionReason}</p>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="flex flex-wrap gap-3 mt-8 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+            <div className="flex flex-wrap gap-3 mt-8 pt-6 border-t border-border">
               {selectedApp.status !== "approved" && (
                 <button 
                   onClick={() => handleApprove(selectedApp.id)}
                   disabled={processingId === selectedApp.id}
-                  className="flex-1 min-w-[140px] py-4 font-black bg-green-500 text-white rounded-2xl hover:bg-green-600 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                  className="flex-1 min-w-[140px] py-4 text-xs font-black uppercase tracking-widest bg-emerald-500 text-white rounded-2xl hover:bg-emerald-600 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
                 >
-                  <Check className="w-5 h-5" />
+                  <Check className="w-4 h-4" />
                   Approve
                 </button>
               )}
@@ -461,18 +461,18 @@ export default function AdminCreatorsPage() {
                 <button 
                   onClick={() => setShowRejectModal(selectedApp.id)}
                   disabled={processingId === selectedApp.id}
-                  className="flex-1 min-w-[140px] py-4 font-black bg-red-500 text-white rounded-2xl hover:bg-red-600 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2"
+                  className="flex-1 min-w-[140px] py-4 text-xs font-black uppercase tracking-widest bg-destructive text-destructive-foreground rounded-2xl hover:opacity-90 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-destructive/20"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                   Reject
                 </button>
               )}
               <button 
                 onClick={() => handleDelete(selectedApp.id)}
                 disabled={processingId === selectedApp.id}
-                className="flex-1 min-w-[140px] py-4 font-bold text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-2xl transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 min-w-[140px] py-4 text-xs font-black uppercase tracking-widest text-muted-foreground hover:bg-secondary hover:text-foreground rounded-2xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 border border-border hover:border-primary/50"
               >
-                <Trash2 className="w-5 h-5" />
+                <Trash2 className="w-4 h-4" />
                 Delete
               </button>
             </div>
@@ -482,30 +482,30 @@ export default function AdminCreatorsPage() {
 
       {/* Rejection Modal */}
       {showRejectModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-8 shadow-2xl">
-            <h2 className="text-2xl font-black tracking-tight mb-4">Reject Application</h2>
-            <p className="text-zinc-500 text-sm mb-6">Please provide a clear reason for rejecting this application. This will be shown to the applicant.</p>
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-6 bg-background/80 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-card border border-border rounded-3xl p-8 shadow-2xl">
+            <h2 className="text-2xl font-black tracking-tight mb-4 text-foreground">Reject Application</h2>
+            <p className="text-muted-foreground text-sm mb-6 font-medium">Please provide a clear reason for rejecting this application. This will be shown to the applicant.</p>
             
             <textarea 
               value={rejectionReason}
               onChange={(e) => setRejectionReason(e.target.value)}
               placeholder="e.g. Portfolio does not meet our quality standards..."
-              className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-4 text-sm outline-none focus:ring-2 focus:ring-red-500/20 transition-all resize-none mb-6"
+              className="w-full bg-background border border-border rounded-2xl px-4 py-4 text-sm outline-none focus:ring-2 focus:ring-destructive/20 transition-all resize-none mb-6 text-foreground placeholder:text-muted-foreground shadow-sm focus:border-destructive"
               rows={4}
             />
             
             <div className="flex gap-3">
               <button 
                 onClick={() => setShowRejectModal(null)}
-                className="flex-1 py-4 font-bold text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-2xl transition-all"
+                className="flex-1 py-4 text-xs font-black uppercase tracking-widest text-muted-foreground hover:bg-secondary hover:text-foreground rounded-2xl transition-all border border-border"
               >
                 Cancel
               </button>
               <button 
                 onClick={() => handleReject(showRejectModal)}
                 disabled={!rejectionReason || processingId === showRejectModal}
-                className="flex-1 py-4 font-black bg-red-500 text-white rounded-2xl hover:bg-red-600 transition-all disabled:opacity-50 active:scale-95"
+                className="flex-1 py-4 text-xs font-black uppercase tracking-widest bg-destructive text-destructive-foreground rounded-2xl hover:opacity-90 transition-all disabled:opacity-50 active:scale-95 shadow-lg shadow-destructive/20"
               >
                 Confirm Reject
               </button>

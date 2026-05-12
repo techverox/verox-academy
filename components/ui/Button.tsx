@@ -1,18 +1,19 @@
 import * as React from "react";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "danger" | "destructive";
   size?: "sm" | "md" | "lg" | "icon";
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = "primary", size = "md", ...props }, ref) => {
     const variants = {
-      primary: "bg-primary text-white hover:bg-primary-hover shadow-[0_1px_2px_rgba(0,0,0,0.4)]",
-      secondary: "bg-muted text-white hover:bg-zinc-800",
-      outline: "border border-border bg-transparent hover:bg-muted text-zinc-300 hover:text-white",
-      ghost: "bg-transparent hover:bg-muted text-zinc-400 hover:text-white",
-      danger: "bg-danger text-white hover:opacity-90",
+      primary: "bg-primary text-primary-foreground hover:bg-primary-hover shadow-sm",
+      secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+      outline: "border border-border bg-transparent hover:bg-secondary text-foreground",
+      ghost: "bg-transparent hover:bg-secondary text-muted-foreground hover:text-foreground",
+      danger: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+      destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
     };
 
     const sizes = {
