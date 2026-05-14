@@ -5,6 +5,7 @@ import { Trophy, Award, ArrowRight, Home, Sparkles, Share2, Download, CheckCircl
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 interface CourseCompletionModalProps {
   courseTitle: string;
@@ -23,7 +24,7 @@ export function CourseCompletionModal({ courseTitle, courseId, userId, onClose }
 
   return (
     <div className={cn(
-      "fixed inset-0 z-[100] flex items-center justify-center p-6 transition-all duration-1000",
+      "fixed inset-0 z-100 flex items-center justify-center p-6 transition-all duration-1000",
       isVisible ? "bg-black/90 backdrop-blur-xl" : "bg-transparent opacity-0"
     )}>
       <motion.div 
@@ -34,7 +35,7 @@ export function CourseCompletionModal({ courseTitle, courseId, userId, onClose }
       >
         {/* Cinematic Background */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.15),transparent_70%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:40px_40px] opacity-20" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-size-[40px_40px] opacity-20" />
         
         <div className="relative z-10 space-y-12">
           {/* Achievement Badge */}
@@ -101,5 +102,3 @@ export function CourseCompletionModal({ courseTitle, courseId, userId, onClose }
     </div>
   );
 }
-
-import { cn } from "@/lib/utils";

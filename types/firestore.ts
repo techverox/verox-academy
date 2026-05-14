@@ -35,6 +35,24 @@ export interface User {
   lastLogin: FirestoreTimestamp;
 }
 
+/**
+ * Unified User type for the application.
+ * Combines Firebase Auth User and Firestore Profile data.
+ */
+export interface AppUser {
+  uid: string;
+  email: string;
+  name: string;
+  photoURL: string;
+  role: "student" | "creator" | "admin";
+  username?: string;
+  bio?: string;
+  verified: boolean;
+  onboardingCompleted?: boolean;
+  createdAt: FirestoreTimestamp;
+  lastLogin: FirestoreTimestamp;
+}
+
 // ─── Course ─────────────────────────────────────────────────────────────────
 export interface Course {
   id: string;
@@ -88,6 +106,40 @@ export interface Lesson {
   createdAt: FirestoreTimestamp;
 }
 
+// ─── Video Progress ────────────────────────────────────────────────────────
+export interface VideoProgress {
+  id: string; // userId_lessonId
+  userId: string;
+  courseId: string;
+  lessonId: string;
+  watchedSeconds: number;
+  duration: number;
+  completed: boolean;
+  updatedAt: FirestoreTimestamp;
+}
+
+// ─── Video Reaction ────────────────────────────────────────────────────────
+export interface VideoReaction {
+  id: string; // userId_lessonId
+  userId: string;
+  lessonId: string;
+  type: "like" | "dislike";
+  createdAt: FirestoreTimestamp;
+}
+
+// ─── Teacher ───────────────────────────────────────────────────────────────
+export interface Teacher {
+  id: string; // usually same as userId
+  name: string;
+  bio: string;
+  avatarUrl?: string;
+  expertise: string;
+  courseCount: number;
+  studentCount: number;
+  rating: number;
+  createdAt: FirestoreTimestamp;
+}
+
 // ─── Resource ───────────────────────────────────────────────────────────────
 export interface Resource {
   id: string;
@@ -98,6 +150,59 @@ export interface Resource {
   url: string;
   size?: number; // bytes
   createdAt: FirestoreTimestamp;
+}
+
+// ─── Comments ──────────────────────────────────────────────────────────────
+export interface Comment {
+  id: string;
+  lessonId: string;
+  userId: string;
+  userName: string;
+  userPhoto?: string;
+  content: string;
+  likes: number;
+  replyCount: number;
+  isEdited: boolean;
+  createdAt: FirestoreTimestamp;
+  updatedAt: FirestoreTimestamp;
+}
+
+export interface CommentReply {
+  id: string;
+  commentId: string; // parent comment
+  lessonId: string;
+  userId: string;
+  userName: string;
+  userPhoto?: string;
+  content: string;
+  likes: number;
+  isEdited: boolean;
+  createdAt: FirestoreTimestamp;
+  updatedAt: FirestoreTimestamp;
+}
+
+export interface CommentLike {
+  id: string; // userId_commentId
+  userId: string;
+  commentId: string;
+  type: "comment" | "reply";
+  createdAt: FirestoreTimestamp;
+}
+
+// ─── Analytics ─────────────────────────────────────────────────────────────
+export interface LessonAnalytics {
+  id: string; // lessonId_userId or daily_lessonId
+  lessonId: string;
+  courseId: string;
+  userId?: string;
+  watchTime: number; // seconds
+  engagements: {
+    likes: number;
+    comments: number;
+    shares: number;
+  };
+  completionRate: number; // 0-1
+  lastTracked: FirestoreTimestamp;
 }
 
 // ─── Quiz ──────────────────────────────────────────────────────────────────

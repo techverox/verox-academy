@@ -57,6 +57,33 @@ export async function getFeaturedCourses(limitCount: number = 4): Promise<Course
 }
 
 /**
+ * Fetch all published courses using Firebase Admin SDK.
+ */
+export async function getCoursesServer(): Promise<Course[]> {
+  try {
+    const db = getAdminDb();
+    const snapshot = await db.collection("courses")
+      .where("published", "==", true)
+      .get();
+
+    const courses = snapshot.docs.map(doc => sanitizeDoc(doc.id, doc.data())) as Course[];
+    
+    // Sort in memory to avoid index requirements
+    return courses.sort((a, b) => {
+      const dateA = (a.createdAt as any)?.seconds || 0;
+      const dateB = (b.createdAt as any)?.seconds || 0;
+      return dateB - dateA;
+    });
+  } catch (error) {
+    console.error("[SERVER] Failed to fetch courses:", error);
+    return [];
+  }
+}
+
+// Alias for consistency
+export const getCourses = getCoursesServer;
+
+/**
  * Fetch a single course by ID using Firebase Admin SDK.
  */
 export async function getCourseByIdServer(courseId: string): Promise<Course | null> {
@@ -71,6 +98,9 @@ export async function getCourseByIdServer(courseId: string): Promise<Course | nu
     return null;
   }
 }
+
+// Alias for easier import and consistency with client-side naming
+export const getCourseById = getCourseByIdServer;
 
 /**
  * Fetch lessons for a course using Firebase Admin SDK.
@@ -131,6 +161,34 @@ export async function createEnrollmentServer(userId: string, courseId: string, o
     return false;
   }
 }
+
+/**
+ * Fetch reviews for a course using Firebase Admin SDK.
+ */
+export async function getReviewsByCourseIdServer(courseId: string): Promise<Review[]> {
+  try {
+    const db = getAdminDb();
+    const snapshot = await db.collection("reviews")
+      .where("courseId", "==", courseId)
+      .get();
+
+    const reviews = snapshot.docs.map(doc => sanitizeDoc(doc.id, doc.data())) as Review[];
+    
+    // Sort in memory to avoid index requirements
+    return reviews.sort((a, b) => {
+      const dateA = (a.createdAt as any)?.seconds || 0;
+      const dateB = (b.createdAt as any)?.seconds || 0;
+      return dateB - dateA;
+    });
+  } catch (error) {
+    console.error(`[SERVER] Failed to fetch reviews for course ${courseId}:`, error);
+    return [];
+  }
+}
+
+// Alias for consistency
+export const getReviewsByCourseId = getReviewsByCourseIdServer;
+export const isUserEnrolled = isUserEnrolledServer;
 
 /**
  * Fetch a payment record by Order ID.

@@ -41,7 +41,7 @@ export default function BecomeCreatorPage() {
     if (user) {
       setFormData(prev => ({
         ...prev,
-        fullName: user.displayName || "",
+        fullName: user.name || "",
         email: user.email || "",
       }));
 

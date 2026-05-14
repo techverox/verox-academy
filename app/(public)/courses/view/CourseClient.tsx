@@ -100,7 +100,7 @@ function CourseViewContent() {
       await addReview({
         courseId,
         userId: user.uid,
-        userName: user.displayName || "Anonymous Student",
+        userName: user.name || "Anonymous Student",
         userPhoto: user.photoURL || undefined,
         rating: newReview.rating,
         comment: newReview.comment

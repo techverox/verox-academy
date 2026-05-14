@@ -3,38 +3,31 @@
  * ====================================================
  * Manages Firebase Auth state and user profile data.
  *
- * UPGRADE: Now reads custom claims from the ID token for admin status.
- * This eliminates the need for Firestore reads to check admin role,
- * reducing latency and costs.
- *
- * The `isAdmin` flag comes from:
- * 1. Firebase Custom Claims (token.admin === true) — PRIMARY
- * 2. Firestore profile role — FALLBACK (backward compatibility)
+ * UPGRADE: Now uses unified AppUser type to solve TypeScript property access issues.
+ * Combines Firebase Auth and Firestore profile data safely.
  */
 
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { getUserProfile, createUserIfNotExists } from "@/lib/firestore";
-import { User as FirestoreUser } from "@/types/firestore";
+import { User as FirestoreUser, AppUser } from "@/types/firestore";
 
 interface AuthContextType {
-  user: FirebaseUser | null;
-  profile: FirestoreUser | null;
+  user: AppUser | null;
+  /** Raw Firebase User for internal use if needed */
+  firebaseUser: FirebaseUser | null;
   loading: boolean;
-  /** Whether the current user has admin privileges */
   isAdmin: boolean;
-  /** Whether the current user has creator privileges */
   isCreator: boolean;
-  /** Force refresh the ID token to pick up new custom claims */
   refreshClaims: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
-  profile: null,
+  firebaseUser: null,
   loading: true,
   isAdmin: false,
   isCreator: false,
@@ -42,42 +35,52 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [profile, setProfile] = useState<FirestoreUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCreator, setIsCreator] = useState(false);
 
-  /**
-   * Read admin and creator status from the Firebase ID token's custom claims.
-   * Falls back to Firestore profile role for backward compatibility.
-   */
+  // Compute the unified AppUser
+  const user = useMemo<AppUser | null>(() => {
+    if (!firebaseUser || !profile) return null;
+
+    return {
+      uid: firebaseUser.uid,
+      email: firebaseUser.email || profile.email,
+      name: profile.name || firebaseUser.displayName || "Student",
+      photoURL: profile.photoURL || firebaseUser.photoURL || "",
+      role: profile.role,
+      username: profile.username,
+      bio: profile.bio,
+      verified: profile.verified,
+      onboardingCompleted: profile.onboardingCompleted,
+      createdAt: profile.createdAt,
+      lastLogin: profile.lastLogin,
+    };
+  }, [firebaseUser, profile]);
+
   const checkRoles = async (
-    firebaseUser: FirebaseUser,
-    firestoreProfile: FirestoreUser | null
+    fbUser: FirebaseUser,
+    fsProfile: FirestoreUser | null
   ): Promise<{ isAdmin: boolean; isCreator: boolean }> => {
     let admin = false;
     let creator = false;
 
     try {
-      // PRIMARY: Check custom claims from ID token
-      const tokenResult = await firebaseUser.getIdTokenResult();
+      const tokenResult = await fbUser.getIdTokenResult();
       admin = tokenResult.claims.admin === true;
       creator = tokenResult.claims.creator === true;
     } catch (error) {
       console.error("[AUTH] Failed to read token claims:", error);
     }
 
-    // FALLBACK: Check Firestore profile role
-    if (!admin) admin = firestoreProfile?.role === "admin";
-    if (!creator) creator = firestoreProfile?.role === "creator";
+    if (!admin) admin = fsProfile?.role === "admin";
+    if (!creator) creator = fsProfile?.role === "creator";
 
     return { isAdmin: admin, isCreator: creator };
   };
 
-  /**
-   * Force refresh the ID token to pick up newly set custom claims.
-   */
   const refreshClaims = async (): Promise<void> => {
     const currentUser = auth.currentUser;
     if (!currentUser) return;
@@ -90,55 +93,56 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setLoading(true);
-      if (firebaseUser) {
-        setUser(firebaseUser);
+      if (fbUser) {
+        setFirebaseUser(fbUser);
+        
+        // Ensure user exists in Firestore
         await createUserIfNotExists({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || "",
-          name: firebaseUser.displayName,
-          photoURL: firebaseUser.photoURL,
+          uid: fbUser.uid,
+          email: fbUser.email || "",
+          name: fbUser.displayName,
+          photoURL: fbUser.photoURL,
         });
-        const userProfile = await getUserProfile(firebaseUser.uid);
+
+        const userProfile = await getUserProfile(fbUser.uid);
         setProfile(userProfile);
 
-        const { isAdmin: admin, isCreator: creator } = await checkRoles(firebaseUser, userProfile);
+        const { isAdmin: admin, isCreator: creator } = await checkRoles(fbUser, userProfile);
         let finalAdmin = admin;
         let finalCreator = creator;
 
-        // AUTO-SYNC: If Firestore says admin/creator but token claims don't match, sync them
+        // Auto-sync custom claims if they diverge from Firestore
         try {
-          const tokenResult = await firebaseUser.getIdTokenResult();
+          const tokenResult = await fbUser.getIdTokenResult();
           const claimAdmin = tokenResult.claims.admin === true;
           const claimCreator = tokenResult.claims.creator === true;
-          const firestoreAdmin = userProfile?.role === "admin";
-          const firestoreCreator = userProfile?.role === "creator" || firestoreAdmin;
+          const fsAdmin = userProfile?.role === "admin";
+          const fsCreator = userProfile?.role === "creator" || fsAdmin;
 
-          if ((firestoreAdmin && !claimAdmin) || (firestoreCreator && !claimCreator)) {
-            console.log("[AUTH] Discrepancy detected between Firestore role and Custom Claims. Syncing...");
-            const token = await firebaseUser.getIdToken();
+          if ((fsAdmin && !claimAdmin) || (fsCreator && !claimCreator)) {
+            const token = await fbUser.getIdToken();
             const res = await fetch("/api/auth/sync-claims", {
               method: "POST",
               headers: { Authorization: `Bearer ${token}` }
             });
             
             if (res.ok) {
-              await firebaseUser.getIdToken(true); // Force refresh token
-              const newTokenResult = await firebaseUser.getIdTokenResult();
-              finalAdmin = newTokenResult.claims.admin === true || firestoreAdmin;
-              finalCreator = newTokenResult.claims.creator === true || firestoreCreator;
-              console.log("[AUTH] Claims synced successfully.");
+              await fbUser.getIdToken(true);
+              const newTokenResult = await fbUser.getIdTokenResult();
+              finalAdmin = newTokenResult.claims.admin === true || fsAdmin;
+              finalCreator = newTokenResult.claims.creator === true || fsCreator;
             }
           }
-        } catch (syncError) {
-          console.error("[AUTH] Failed to auto-sync claims:", syncError);
+        } catch (error) {
+          console.error("[AUTH] Failed to sync claims:", error);
         }
 
         setIsAdmin(finalAdmin);
         setIsCreator(finalCreator);
       } else {
-        setUser(null);
+        setFirebaseUser(null);
         setProfile(null);
         setIsAdmin(false);
         setIsCreator(false);
@@ -150,7 +154,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, isAdmin, isCreator, refreshClaims }}>
+    <AuthContext.Provider value={{ user, firebaseUser, loading, isAdmin, isCreator, refreshClaims }}>
       {children}
     </AuthContext.Provider>
   );

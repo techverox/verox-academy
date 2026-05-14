@@ -3,18 +3,31 @@
  * ==============================
  * These functions run in the browser using the Firebase Client SDK.
  * They are subject to Firestore Security Rules.
- *
- * SECURITY NOTES:
- * - enrollUserInCourse() has been REMOVED — enrollment now happens server-side only
- * - Data writes should be limited to user's own data (progress, profile)
- * - Admin writes use client SDK but are protected by Firestore rules
- *
- * PERFORMANCE NOTES:
- * - getUserDashboardStats() has been optimized to reduce nested fetches
- * - Admin stats should eventually read from aggregation collections
  */
 
-import { User, Course, Lesson, Enrollment, LessonProgress, CreatorApplication, Certificate, Resource, Quiz, Question, QuizAttempt, Review, CreatorStats, PayoutRequest } from "@/types/firestore";
+import { 
+  User, 
+  Course, 
+  Lesson, 
+  Enrollment, 
+  LessonProgress, 
+  CreatorApplication, 
+  Certificate, 
+  Resource, 
+  Quiz, 
+  Question, 
+  QuizAttempt, 
+  Review, 
+  CreatorStats, 
+  PayoutRequest, 
+  VideoProgress, 
+  VideoReaction, 
+  Teacher,
+  Comment,
+  CommentReply,
+  CommentLike,
+  LessonAnalytics
+} from "@/types/firestore";
 import { 
   doc, 
   getDoc, 
@@ -30,145 +43,33 @@ import {
   runTransaction,
   increment,
   Timestamp,
-  onSnapshot 
+  onSnapshot,
+  startAfter,
+  deleteDoc,
+  writeBatch
 } from "firebase/firestore";
 import { db } from "./firebase";
 
-// ─── Live Subscriptions (Real-time Sync) ────────────────────────────────────
+// ─── Live Subscriptions ──────────────────────────────────────────────────────
 
-/**
- * Subscribe to a creator's statistics live.
- */
 export const subscribeToCreatorStats = (creatorId: string, callback: (stats: CreatorStats | null) => void) => {
   const statsRef = doc(db, "creatorStats", creatorId);
-  return onSnapshot(statsRef, 
-    (doc) => {
-      if (doc.exists()) {
-        callback(doc.data() as CreatorStats);
-      } else {
-        callback(null);
-      }
-    },
-    (error) => {
-      if (error.code !== "permission-denied") {
-        console.warn("[FIRESTORE] Creator Stats subscription error:", error);
-      }
-    }
-  );
+  return onSnapshot(statsRef, (doc) => callback(doc.exists() ? (doc.data() as CreatorStats) : null));
 };
 
-/**
- * Subscribe to recent enrollments for a creator live.
- */
-export const subscribeToCreatorRecentEnrollments = (creatorId: string, callback: (enrollments: any[]) => void) => {
-  // We need to fetch enrollments where the course belongs to the creator.
-  // For now, we'll fetch the last 10 enrollments across all courses.
-  // (In a real app, you'd filter by courseId list)
-  const enrollmentsRef = collection(db, "enrollments");
-  const q = query(enrollmentsRef, orderBy("enrolledAt", "desc"), limit(10));
-
-  return onSnapshot(q, 
-    (snapshot) => {
-      const enrollments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      callback(enrollments);
-    },
-    (error) => {
-      // Silence expected permission errors for unauthorized users
-      if (error.code !== "permission-denied") {
-        console.warn("[FIRESTORE] Creator Enrollments subscription error:", error);
-      }
-      callback([]); // Return empty on error
-    }
-  );
-};
-
-/**
- * Subscribe to a limited list of recent users (Admin only).
- * For full user management, use paginated fetches.
- */
 export const subscribeToRecentUsers = (limitCount: number = 20, callback: (users: User[]) => void) => {
-  const usersRef = collection(db, "users");
-  const q = query(usersRef, orderBy("createdAt", "desc"), limit(limitCount));
-
-  return onSnapshot(q, 
-    (snapshot) => {
-      const users = snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() })) as User[];
-      callback(users);
-    },
-    (error) => {
-      if (error.code !== "permission-denied") {
-        console.warn("[FIRESTORE] Users subscription error:", error);
-      }
-      callback([]);
-    }
-  );
-};
-
-// ─── Creator Economy Operations ─────────────────────────────────────────────
-
-/**
- * Submits a new creator application.
- */
-export const submitCreatorApplication = async (application: Omit<CreatorApplication, "id" | "status" | "createdAt">) => {
-  const applicationsRef = collection(db, "creatorApplications");
-  const newAppRef = doc(applicationsRef);
-  
-  const newApp: Omit<CreatorApplication, "id"> = {
-    ...application,
-    status: "pending",
-    createdAt: serverTimestamp(),
-  };
-
-  await setDoc(newAppRef, newApp);
-  
-  // Trigger email via API (Admin Alert)
-  try {
-    const { auth } = await import("./firebase");
-    const token = await auth.currentUser?.getIdToken();
-    if (token) {
-      await fetch("/api/creators/apply", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(application),
-      });
-    }
-  } catch (err) {
-    console.error("[EMAIL] Failed to trigger creator application email:", err);
-  }
-
-  return newAppRef.id;
-};
-
-/**
- * Fetches the status of a user's creator application.
- */
-export const getCreatorApplicationStatus = async (userId: string): Promise<CreatorApplication | null> => {
-  const applicationsRef = collection(db, "creatorApplications");
-  const q = query(applicationsRef, where("userId", "==", userId), limit(10));
-  const querySnapshot = await getDocs(q);
-  
-  if (querySnapshot.empty) return null;
-  const apps = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CreatorApplication));
-  return apps.sort((a, b) => {
-    const dateA = (a.createdAt as any)?.seconds || 0;
-    const dateB = (b.createdAt as any)?.seconds || 0;
-    return dateB - dateA;
-  })[0];
+  const q = query(collection(db, "users"), orderBy("createdAt", "desc"), limit(limitCount));
+  return onSnapshot(q, (snap) => callback(snap.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User))));
 };
 
 // ─── User Operations ────────────────────────────────────────────────────────
 
-/**
- * Creates a user profile in Firestore if it doesn't already exist.
- */
 export const createUserIfNotExists = async (userData: Partial<User>) => {
   if (!userData.uid) return;
-
   const userRef = doc(db, "users", userData.uid);
   const userSnap = await getDoc(userRef);
-
   if (!userSnap.exists()) {
-    const newUser: User = {
+    await setDoc(userRef, {
       uid: userData.uid,
       email: userData.email || "",
       name: userData.name || null,
@@ -177,891 +78,143 @@ export const createUserIfNotExists = async (userData: Partial<User>) => {
       verified: true,
       createdAt: serverTimestamp(),
       lastLogin: serverTimestamp(),
-    };
-    await setDoc(userRef, newUser);
-    
-    // Trigger Welcome Email via API
-    try {
-      const { auth } = await import("./firebase");
-      const token = await auth.currentUser?.getIdToken();
-      if (token) {
-        await fetch("/api/auth/onboard", {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` }
-        });
-      }
-    } catch (err) {
-      console.warn("[EMAIL] Failed to trigger welcome email:", err);
-    }
+    });
   } else {
-    // Update last login
-    await setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true });
+    await updateDoc(userRef, { lastLogin: serverTimestamp() });
   }
 };
 
-/**
- * Updates last login for an existing user.
- */
-export const updateUserLogin = async (uid: string) => {
-  const userRef = doc(db, "users", uid);
-  await setDoc(userRef, { lastLogin: serverTimestamp() }, { merge: true });
-};
-
-/**
- * Fetches a user's profile from Firestore.
- */
 export const getUserProfile = async (uid: string): Promise<User | null> => {
-  const userRef = doc(db, "users", uid);
-  const userSnap = await getDoc(userRef);
-  if (userSnap.exists()) {
-    return userSnap.data() as User;
-  }
-  return null;
+  const snap = await getDoc(doc(db, "users", uid));
+  return snap.exists() ? (snap.data() as User) : null;
 };
 
-/**
- * Updates a user's profile data.
- */
-export const updateUserProfile = async (uid: string, data: Partial<User>) => {
-  const userRef = doc(db, "users", uid);
-  await updateDoc(userRef, data);
-};
+// ─── Course & Lesson Queries ────────────────────────────────────────────────
 
-/**
- * Fetches real analytics data for creator charts.
- * Groups revenue by month and enrollments by day.
- */
-export const getCreatorAnalytics = async (creatorId: string) => {
-  // 1. Fetch Revenue Data (last 6 months)
-  const paymentsRef = collection(db, "payments");
-  const sixMonthsAgo = new Date();
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-  
-  const revenueQuery = query(
-    paymentsRef,
-    where("creatorId", "==", creatorId),
-    where("status", "==", "captured"),
-    where("createdAt", ">=", Timestamp.fromDate(sixMonthsAgo))
-  );
-  
-  const revenueSnap = await getDocs(revenueQuery);
-  const revenueByMonth: Record<string, number> = {};
-  
-  revenueSnap.docs.forEach(doc => {
-    const data = doc.data();
-    const date = data.createdAt.toDate();
-    const month = date.toLocaleString('default', { month: 'short' });
-    revenueByMonth[month] = (revenueByMonth[month] || 0) + (data.creatorRevenue || 0) / 100;
-  });
-
-  // 2. Fetch Enrollment Data (last 7 days)
-  const enrollmentsRef = collection(db, "enrollments");
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  
-  // Note: We need a way to filter enrollments by creator courses. 
-  // For simplicity in this demo, we'll fetch recent enrollments and filter client-side 
-  // or use the pre-calculated stats if available. 
-  // Better yet, let's just use the last 7 days of global enrollments for now 
-  // or just return the month-grouped data.
-  
-  const chartData = Object.entries(revenueByMonth).map(([name, value]) => ({ name, value }));
-  
-  return {
-    revenueData: chartData.length > 0 ? chartData : [
-      { name: "Jan", value: 0 }, { name: "Feb", value: 0 }, { name: "Mar", value: 0 },
-      { name: "Apr", value: 0 }, { name: "May", value: 0 }, { name: "Jun", value: 0 }
-    ],
-    enrollmentData: [
-      { name: "Mon", value: 0 }, { name: "Tue", value: 0 }, { name: "Wed", value: 0 },
-      { name: "Thu", value: 0 }, { name: "Fri", value: 0 }, { name: "Sat", value: 0 },
-      { name: "Sun", value: 0 }
-    ]
-  };
-};
-
-// ─── Course Queries ─────────────────────────────────────────────────────────
-
-/**
- * Fetch published courses with a safety limit for performance.
- */
-export const getCourses = async (limitCount: number = 100) => {
-  const coursesRef = collection(db, "courses");
-  const q = query(
-    coursesRef, 
-    where("published", "==", true), 
-    limit(limitCount)
-  );
-  
-  const snapshot = await getDocs(q);
-  const courses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Course[];
-  
-  // Sort by createdAt in memory to avoid needing a composite index
-  return courses.sort((a, b) => {
-    const dateA = (a.createdAt as any)?.seconds || 0;
-    const dateB = (b.createdAt as any)?.seconds || 0;
-    return dateB - dateA;
-  });
-};
-
-/**
- * Fetches a single course by its ID.
- */
 export const getCourseById = async (courseId: string): Promise<Course | null> => {
+  const snap = await getDoc(doc(db, "courses", courseId));
+  return snap.exists() ? { id: snap.id, ...snap.data() } as Course : null;
+};
+
+export const getCourses = async (): Promise<Course[]> => {
+  const q = query(collection(db, "courses"), where("published", "==", true));
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course));
+};
+
+export const getAllCoursesAdmin = async (): Promise<Course[]> => {
+  const q = query(collection(db, "courses"), orderBy("createdAt", "desc"));
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course));
+};
+
+export const getCoursesByCreator = async (creatorId: string): Promise<Course[]> => {
+  const q = query(collection(db, "courses"), where("creatorId", "==", creatorId), orderBy("createdAt", "desc"));
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Course));
+};
+
+export const toggleCoursePublish = async (courseId: string, currentStatus: boolean) => {
   const courseRef = doc(db, "courses", courseId);
-  const courseSnap = await getDoc(courseRef);
-
-  if (courseSnap.exists()) {
-    return { id: courseSnap.id, ...courseSnap.data() } as Course;
-  }
-  
-  return null;
+  await updateDoc(courseRef, { 
+    published: !currentStatus,
+    updatedAt: serverTimestamp()
+  });
 };
 
-// ─── Lesson Queries ─────────────────────────────────────────────────────────
-
-/**
- * Fetches all lessons for a specific course, ordered by 'order'.
- */
 export const getLessonsByCourseId = async (courseId: string): Promise<Lesson[]> => {
-  const lessonsRef = collection(db, "lessons");
-  const q = query(
-    lessonsRef, 
-    where("courseId", "==", courseId),
-    orderBy("order", "asc")
+  const q = query(collection(db, "lessons"), where("courseId", "==", courseId), orderBy("order", "asc"));
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lesson));
+};
+
+export const subscribeToLessons = (courseId: string, callback: (lessons: Lesson[]) => void, onError?: (error: any) => void) => {
+  const q = query(collection(db, "lessons"), where("courseId", "==", courseId), orderBy("order", "asc"));
+  return onSnapshot(q, 
+    (snap) => {
+      const fetchedLessons = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Lesson));
+      console.log(`[FIRESTORE] Subscribed to lessons for ${courseId}. Found: ${fetchedLessons.length}`);
+      callback(fetchedLessons);
+    },
+    (error) => {
+      console.error(`[FIRESTORE] Subscription error for lessons (${courseId}):`, error);
+      if (onError) onError(error);
+    }
   );
-  const querySnapshot = await getDocs(q);
-  
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  } as Lesson));
-};
-
-/**
- * Fetches a single lesson by its ID.
- */
-export const getLessonById = async (lessonId: string): Promise<Lesson | null> => {
-  const lessonRef = doc(db, "lessons", lessonId);
-  const lessonSnap = await getDoc(lessonRef);
-
-  if (lessonSnap.exists()) {
-    return { id: lessonSnap.id, ...lessonSnap.data() } as Lesson;
-  }
-  
-  return null;
-};
-
-// ─── Enrollment Queries (Read-Only from Client) ─────────────────────────────
-
-/**
- * Checks if a user is enrolled in a specific course.
- */
-export const isUserEnrolled = async (userId: string, courseId: string): Promise<boolean> => {
-  const enrollmentId = `${userId}_${courseId}`;
-  const enrollmentRef = doc(db, "enrollments", enrollmentId);
-  const enrollmentSnap = await getDoc(enrollmentRef);
-  return enrollmentSnap.exists();
-};
-
-/**
- * Fetches all enrollments for a user along with course details.
- * OPTIMIZED: Uses Promise.all for parallel fetching instead of sequential.
- */
-export const getUserEnrollments = async (userId: string): Promise<(Enrollment & { course: Course })[]> => {
-  const enrollmentsRef = collection(db, "enrollments");
-  const q = query(enrollmentsRef, where("userId", "==", userId));
-  const querySnapshot = await getDocs(q);
-  
-  const enrollments = querySnapshot.docs.map(doc => doc.data() as Enrollment);
-  
-  // Parallel fetch all courses (still N+1 but courses are cached by Firestore)
-  const enrollmentWithCourses = await Promise.all(
-    enrollments.map(async (enrollment) => {
-      const course = await getCourseById(enrollment.courseId);
-      return { ...enrollment, course: course! };
-    })
-  );
-
-  return enrollmentWithCourses;
 };
 
 // ─── Progress Tracking ──────────────────────────────────────────────────────
 
-/**
- * Marks a lesson as completed for a user.
- */
-export const markLessonComplete = async (
-  userId: string, 
-  courseId: string, 
-  lessonId: string
-): Promise<void> => {
+export const markLessonComplete = async (userId: string, courseId: string, lessonId: string) => {
   const progressId = `${userId}_${lessonId}`;
-  const progressRef = doc(db, "lessonProgress", progressId);
   const enrollmentId = `${userId}_${courseId}`;
-  const enrollmentRef = doc(db, "enrollments", enrollmentId);
-
+  
   await runTransaction(db, async (transaction) => {
+    const progressRef = doc(db, "lessonProgress", progressId);
+    const enrollmentRef = doc(db, "enrollments", enrollmentId);
+    
     const progressSnap = await transaction.get(progressRef);
-    // If already completed, do nothing to avoid over-incrementing
     if (progressSnap.exists()) return;
 
     const enrollmentSnap = await transaction.get(enrollmentRef);
     if (!enrollmentSnap.exists()) return;
 
     const enrollmentData = enrollmentSnap.data() as Enrollment;
-    const currentCompleted = enrollmentData.completedLessons || 0;
-    const totalLessons = enrollmentData.totalLessons || 0;
-    
-    const newCompletedCount = currentCompleted + 1;
-    const newProgress = totalLessons > 0 ? Math.min(Math.round((newCompletedCount / totalLessons) * 100), 100) : 0;
-    const isFinished = newProgress === 100;
+    const newCompleted = (enrollmentData.completedLessons || 0) + 1;
+    const total = enrollmentData.totalLessons || 1;
+    const progress = Math.min(Math.round((newCompleted / total) * 100), 100);
 
-    // 1. Mark lesson as complete
     transaction.set(progressRef, {
-      id: progressId,
-      userId,
-      courseId,
-      lessonId,
-      completed: true,
-      watchedAt: serverTimestamp(),
+      id: progressId, userId, courseId, lessonId,
+      completed: true, watchedAt: serverTimestamp()
     });
 
-    // 2. Update enrollment progress (Aggregated read optimization)
     transaction.update(enrollmentRef, {
-      completedLessons: newCompletedCount,
-      progress: newProgress,
-      status: isFinished ? "completed" : "active",
-      completedAt: isFinished ? serverTimestamp() : (enrollmentData.completedAt || null),
+      completedLessons: newCompleted,
+      progress,
+      status: progress === 100 ? "completed" : "active",
       lastActivityAt: serverTimestamp()
     });
-
-    // ─── Trigger Review Reminder at 50% ──────────────────────────
-    if (newProgress >= 50 && (enrollmentData.progress || 0) < 50) {
-      // Trigger Review Reminder via API
-      try {
-        const { auth } = await import("./firebase");
-        const token = await auth.currentUser?.getIdToken();
-        if (token) {
-          fetch("/api/reviews/reminder", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ courseId }),
-          });
-        }
-      } catch (err) {
-        console.warn("[EMAIL] Failed to trigger review reminder email:", err);
-      }
-    }
-  });
-
-  // 3. Auto-issue certificate if finished (outside transaction for simplicity)
-  const finalEnrollmentSnap = await getDoc(enrollmentRef);
-  if (finalEnrollmentSnap.exists() && finalEnrollmentSnap.data().status === "completed") {
-    // Trigger Certificate Issuance and Email via API
-    try {
-      const { auth } = await import("./firebase");
-      const token = await auth.currentUser?.getIdToken();
-      if (token) {
-        await fetch("/api/certificates/issue", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ courseId }),
-        });
-      }
-    } catch (err) {
-      console.error("[EMAIL] Failed to trigger certificate email:", err);
-      // Fallback to client-side issuance if API fails (but email won't be sent)
-      await autoIssueCertificate(userId, courseId);
-    }
-  }
-};
-
-/**
- * Automatically issues a certificate for a user-course combination if one doesn't exist.
- */
-export const autoIssueCertificate = async (userId: string, courseId: string) => {
-  const certId = `${userId}_${courseId}`;
-  const certRef = doc(db, "certificates", certId);
-  
-  const certSnap = await getDoc(certRef);
-  if (certSnap.exists()) return;
-
-  const [userProfile, course] = await Promise.all([
-    getUserProfile(userId),
-    getCourseById(courseId)
-  ]);
-
-  if (!userProfile || !course) return;
-
-  const certificate: Certificate = {
-    id: certId,
-    userId,
-    courseId,
-    creatorId: course.creatorId,
-    studentName: userProfile.name || "Verox Student",
-    courseTitle: course.title,
-    creatorName: course.creatorName || "Verox Academy",
-    serialNumber: `VX-${courseId.slice(0, 4)}-${userId.slice(0, 4)}-${Math.floor(Date.now() / 100000)}`.toUpperCase(),
-    issuedAt: serverTimestamp(),
-  };
-
-  await setDoc(certRef, certificate);
-};
-
-/**
- * Fetches a certificate by its ID.
- */
-export const getCertificateById = async (certId: string): Promise<Certificate | null> => {
-  const certRef = doc(db, "certificates", certId);
-  const certSnap = await getDoc(certRef);
-  
-  if (certSnap.exists()) {
-    return { id: certSnap.id, ...certSnap.data() } as Certificate;
-  }
-  return null;
-};
-
-/**
- * Fetches certificates for a specific user.
- */
-export const getUserCertificates = async (userId: string): Promise<Certificate[]> => {
-  const certsRef = collection(db, "certificates");
-  const q = query(certsRef, where("userId", "==", userId));
-  const querySnapshot = await getDocs(q);
-  
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Certificate));
-};
-
-/**
- * Fetches all completed lessons for a user in a specific course.
- */
-export const getUserProgress = async (
-  userId: string, 
-  courseId: string
-): Promise<string[]> => {
-  const progressRef = collection(db, "lessonProgress");
-  const q = query(
-    progressRef,
-    where("userId", "==", userId),
-    where("courseId", "==", courseId),
-    where("completed", "==", true)
-  );
-  
-  const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => doc.data().lessonId);
-};
-
-// ─── Dashboard Stats (Optimized) ───────────────────────────────────────────
-
-/**
- * Calculates detailed progress for a user across their enrolled courses.
- *
- * OPTIMIZATION: 
- * - Fetches all enrollments in one query
- * - Parallel fetches courses and lessons
- * - Minimizes total Firestore reads vs previous N+1 pattern
- */
-export const getUserDashboardStats = async (userId: string) => {
-  // 1. Fetch all enrollments for the user (single query)
-  // Enrollment now contains aggregated progress data
-  const enrollments = await getUserEnrollments(userId);
-  
-  if (enrollments.length === 0) {
-    return {
-      enrolledCourses: [],
-      totalEnrolled: 0,
-      totalCompletedLessons: 0,
-      totalHours: 0,
-    };
-  }
-
-  // 2. Map enrollments directly to stats (No more N+1 fetches for lessons/progress!)
-  const stats = enrollments.map((enr) => {
-    return {
-      courseId: enr.courseId,
-      courseTitle: enr.course.title,
-      thumbnail: enr.course.thumbnail,
-      totalLessons: enr.totalLessons || 0,
-      completedCount: enr.completedLessons || 0,
-      percentage: enr.progress || 0,
-      status: enr.status,
-      completedAt: enr.completedAt
-    };
-  });
-
-  const totalEnrolled = enrollments.length;
-  const totalCompletedLessons = stats.reduce((acc, s) => acc + s.completedCount, 0);
-  
-  // NOTE: totalHours calculation still requires lesson durations if we want to be exact,
-  // but for the dashboard summary, we can approximate or skip if not critical.
-  // To keep it "premium", let's assume average 10 mins per lesson for the summary 
-  // if we don't want to fetch all lessons.
-  // Actually, the user might prefer accuracy. Let's keep it 0 for now as we optimized reads.
-  const totalHours = 0; 
-
-  return {
-    enrolledCourses: stats,
-    totalEnrolled,
-    totalCompletedLessons,
-    totalHours
-  };
-};
-
-/**
- * Fetches global stats for the admin dashboard from the optimized platformStats document.
- * This is an O(1) operation compared to O(N) collection scans.
- */
-export const getAdminGlobalStats = async () => {
-  const statsRef = doc(db, "platformStats", "global");
-  const statsSnap = await getDoc(statsRef);
-  
-  if (statsSnap.exists()) {
-    return statsSnap.data();
-  }
-
-  // Fallback to empty stats if not initialized
-  return {
-    totalCourses: 0,
-    totalEnrollments: 0,
-    totalLessons: 0,
-    totalUsers: 0,
-    totalRevenue: 0
-  };
-};
-
-// ─── Admin CMS Operations ───────────────────────────────────────────────────
-
-/**
- * CMS: Fetches ALL courses for admin.
- */
-export const getAllCoursesAdmin = async (): Promise<Course[]> => {
-  const coursesRef = collection(db, "courses");
-  const q = query(coursesRef, orderBy("createdAt", "desc"));
-  const querySnapshot = await getDocs(q);
-  
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  } as Course));
-};
-
-/**
- * CMS: Fetches courses for a specific creator.
- */
-export const getCoursesByCreator = async (creatorId: string): Promise<Course[]> => {
-  const coursesRef = collection(db, "courses");
-  const q = query(coursesRef, where("creatorId", "==", creatorId));
-  const querySnapshot = await getDocs(q);
-  
-  const courses = querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  } as Course));
-
-  return courses.sort((a, b) => {
-    const dateA = (a.createdAt as any)?.seconds || 0;
-    const dateB = (b.createdAt as any)?.seconds || 0;
-    return dateB - dateA;
   });
 };
 
-/**
- * CMS: Creates a new course.
- */
-export const adminCreateCourse = async (courseData: Partial<Course>, creator?: User): Promise<string> => {
-  const coursesRef = collection(db, "courses");
-  const newCourseRef = doc(coursesRef);
-  
-  const newCourse: Omit<Course, "id"> = {
-    title: courseData.title || "Untitled Course",
-    description: courseData.description || "",
-    thumbnail: courseData.thumbnail || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3",
-    price: Number(courseData.price) || 0,
-    instructorId: creator?.uid || "admin",
-    // Creator Info
-    creatorId: creator?.uid || "admin",
-    creatorName: creator?.name || "Verox Academy",
-    creatorPhoto: creator?.photoURL || null,
-    creatorEmail: creator?.email || null,
-    lessonCount: 0,
-    published: courseData.published || false,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  };
-
-  await setDoc(newCourseRef, newCourse);
-  return newCourseRef.id;
+export const getUserProgress = async (userId: string, courseId: string): Promise<string[]> => {
+  const q = query(collection(db, "lessonProgress"), where("userId", "==", userId), where("courseId", "==", courseId), where("completed", "==", true));
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => doc.data().lessonId);
 };
 
-/**
- * CMS: Updates a course.
- */
-export const adminUpdateCourse = async (courseId: string, courseData: Partial<Course>) => {
-  const courseRef = doc(db, "courses", courseId);
-  await setDoc(courseRef, {
-    ...courseData,
-    price: Number(courseData.price) || 0,
-    updatedAt: serverTimestamp(),
+export const saveVideoProgress = async (progress: Omit<VideoProgress, "updatedAt">) => {
+  await setDoc(doc(db, "video_progress", progress.id), {
+    ...progress,
+    updatedAt: serverTimestamp()
   }, { merge: true });
-};
-
-/**
- * CMS: Toggles publish status.
- */
-export const toggleCoursePublish = async (courseId: string, currentStatus: boolean) => {
-  const courseRef = doc(db, "courses", courseId);
-  await setDoc(courseRef, {
-    published: !currentStatus,
-    updatedAt: serverTimestamp(),
-  }, { merge: true });
-};
-/**
- * CMS: Creates a new lesson for a course.
- */
-export const adminCreateLesson = async (lessonData: Partial<Lesson>): Promise<string> => {
-  const lessonsRef = collection(db, "lessons");
-  const newLessonRef = doc(lessonsRef);
-  
-  const newLesson: Omit<Lesson, "id"> = {
-    courseId: lessonData.courseId || "",
-    title: lessonData.title || "New Lesson",
-    description: lessonData.description || "",
-    videoUrl: lessonData.videoUrl || "",
-    wistiaMediaId: lessonData.wistiaMediaId || "",
-    duration: lessonData.duration || "0:00",
-    order: Number(lessonData.order) || 0,
-    published: lessonData.published || false,
-    isPreviewFree: lessonData.isPreviewFree || false,
-    createdAt: serverTimestamp(),
-  };
-
-  await setDoc(newLessonRef, newLesson);
-  return newLessonRef.id;
-};
-
-/**
- * CMS: Updates an existing lesson.
- */
-export const adminUpdateLesson = async (lessonId: string, lessonData: Partial<Lesson>) => {
-  const lessonRef = doc(db, "lessons", lessonId);
-  await setDoc(lessonRef, {
-    ...lessonData,
-    order: Number(lessonData.order) || 0,
-  }, { merge: true });
-};
-
-/**
- * CMS: Deletes a lesson.
- */
-export const adminDeleteLesson = async (lessonId: string) => {
-  const lessonRef = doc(db, "lessons", lessonId);
-  // Using setDoc to mark as deleted or actually deleting? 
-  // For lessons, we can actually delete as it's content management.
-  // But let's just delete for now as per usual CMS flow.
-  const { deleteDoc } = await import("firebase/firestore");
-  await deleteDoc(lessonRef);
-};
-
-/**
- * CMS: Updates the order of multiple lessons.
- */
-export const adminUpdateLessonOrder = async (lessons: { id: string; order: number }[]) => {
-  const { writeBatch } = await import("firebase/firestore");
-  const batch = writeBatch(db);
-  
-  lessons.forEach((l) => {
-    const lessonRef = doc(db, "lessons", l.id);
-    batch.update(lessonRef, { order: l.order });
-  });
-  
-  await batch.commit();
-};
-
-/**
- * CMS: Duplicates a lesson.
- */
-export const adminDuplicateLesson = async (lesson: Lesson) => {
-  const lessonsRef = collection(db, "lessons");
-  const newLessonRef = doc(lessonsRef);
-  
-  const { id, ...lessonData } = lesson;
-  const newLesson = {
-    ...lessonData,
-    title: `${lesson.title} (Copy)`,
-    createdAt: serverTimestamp(),
-    order: lesson.order + 0.1, // Will be re-indexed if needed
-  };
-  
-  await setDoc(newLessonRef, newLesson);
-  return newLessonRef.id;
-};
-/**
- * Fetches aggregated stats for a creator.
- */
-export const getCreatorStats = async (creatorId: string): Promise<CreatorStats | null> => {
-  const statsRef = doc(db, "creatorStats", creatorId);
-  const statsSnap = await getDoc(statsRef);
-  
-  if (statsSnap.exists()) {
-    return statsSnap.data() as CreatorStats;
+  if (progress.completed) {
+    await markLessonComplete(progress.userId, progress.courseId, progress.lessonId);
   }
-  
-  // Return default stats if collection doesn't exist yet
-  return {
-    creatorId,
-    totalCourses: 0,
-    totalStudents: 0,
-    totalEnrollments: 0,
-    totalRevenue: 0,
-    pendingRevenue: 0,
-    paidRevenue: 0,
-    watchHours: 0,
-    lastUpdated: serverTimestamp() as any
-  };
 };
 
-/**
- * Fetches recent enrollments for a creator's courses.
- */
-export const getCreatorRecentEnrollments = async (creatorId: string, limitCount = 5) => {
-  // 1. Get creator's course IDs
-  const coursesRef = collection(db, "courses");
-  const coursesQuery = query(coursesRef, where("creatorId", "==", creatorId));
-  const coursesSnap = await getDocs(coursesQuery);
-  const courseIds = coursesSnap.docs.map(doc => doc.id);
-
-  if (courseIds.length === 0) return [];
-
-  // 2. Get enrollments for these courses
-  const enrollmentsRef = collection(db, "enrollments");
-  const enrollmentsQuery = query(
-    enrollmentsRef, 
-    where("courseId", "in", courseIds.slice(0, 10)), // Firestore 'in' limit is 10
-    orderBy("enrolledAt", "desc"),
-    limit(limitCount)
-  );
-  
-  const enrollmentsSnap = await getDocs(enrollmentsQuery);
-  
-  // 3. Join with course and user info
-  const results = await Promise.all(enrollmentsSnap.docs.map(async (enrDoc) => {
-    const data = enrDoc.data() as Enrollment;
-    const course = coursesSnap.docs.find(d => d.id === data.courseId)?.data() as Course;
-    
-    const userRef = doc(db, "users", data.userId);
-    const userSnap = await getDoc(userRef);
-    const userData = userSnap.exists() ? userSnap.data() as User : null;
-
-    return {
-      id: enrDoc.id,
-      courseTitle: course?.title || "Unknown Course",
-      studentName: userData?.name || "Anonymous Student",
-      enrolledAt: data.enrolledAt
-    };
-  }));
-
-  return results;
+export const getVideoProgress = async (userId: string, lessonId: string): Promise<VideoProgress | null> => {
+  const snap = await getDoc(doc(db, "video_progress", `${userId}_${lessonId}`));
+  return snap.exists() ? (snap.data() as VideoProgress) : null;
 };
 
-/**
- * Submits a new payout request.
- */
-export const requestPayout = async (creatorId: string, amount: number, paymentMethod: any) => {
-  const payoutsRef = collection(db, "payoutRequests");
-  const newPayoutRef = doc(payoutsRef);
-  
-  const newPayout: Omit<PayoutRequest, "id"> = {
-    creatorId,
-    amount,
-    status: "pending",
-    requestedAt: serverTimestamp() as any,
-    paymentMethod
-  };
+// ─── Enrollment Verification ──────────────────────────────────────────────
 
-  await setDoc(newPayoutRef, newPayout);
-  
-  // Trigger Admin Alert via API
-  try {
-    const { auth } = await import("./firebase");
-    const token = await auth.currentUser?.getIdToken();
-    if (token) {
-      await fetch("/api/payouts/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ amount, paymentMethod }),
-      });
-    }
-  } catch (err) {
-    console.error("[EMAIL] Failed to trigger payout alert email:", err);
-  }
-
-  return newPayoutRef.id;
+export const isUserEnrolled = async (userId: string, courseId: string): Promise<boolean> => {
+  const enrollmentRef = doc(db, "enrollments", `${userId}_${courseId}`);
+  const snap = await getDoc(enrollmentRef);
+  return snap.exists();
 };
 
-/**
- * Fetches payout history for a creator.
- */
-export const getPayoutHistory = async (creatorId: string): Promise<PayoutRequest[]> => {
-  const payoutsRef = collection(db, "payoutRequests");
-  const q = query(payoutsRef, where("creatorId", "==", creatorId));
-  const querySnapshot = await getDocs(q);
-  
-  const payouts = querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  } as PayoutRequest));
+// ─── Reviews System ─────────────────────────────────────────────────────────
 
-  return payouts.sort((a, b) => {
-    const dateA = (a.requestedAt as any)?.seconds || 0;
-    const dateB = (b.requestedAt as any)?.seconds || 0;
-    return dateB - dateA;
-  });
-};
-// ─── Lesson Resources ───────────────────────────────────────────────────────
-
-/**
- * Fetches all resources for a specific lesson.
- */
-export const getResourcesByLessonId = async (lessonId: string, courseId?: string): Promise<Resource[]> => {
-  const resourcesRef = collection(db, "resources");
-  
-  // If courseId is provided, we use it for a more restrictive query that matches firestore.rules
-  const q = courseId 
-    ? query(resourcesRef, where("courseId", "==", courseId), where("lessonId", "==", lessonId))
-    : query(resourcesRef, where("lessonId", "==", lessonId));
-    
-  const querySnapshot = await getDocs(q);
-  
-  const resources = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Resource));
-  return resources.sort((a, b) => {
-    const dateA = (a.createdAt as any)?.seconds || 0;
-    const dateB = (b.createdAt as any)?.seconds || 0;
-    return dateB - dateA;
-  });
-};
-
-/**
- * Adds a new resource to a lesson.
- */
-export const adminAddResource = async (resourceData: Omit<Resource, "id" | "createdAt">): Promise<string> => {
-  const resourcesRef = collection(db, "resources");
-  const newResourceRef = doc(resourcesRef);
-  
-  const newResource: Omit<Resource, "id"> = {
-    ...resourceData,
-    createdAt: serverTimestamp(),
-  };
-
-  await setDoc(newResourceRef, newResource);
-  return newResourceRef.id;
-};
-
-/**
- * Deletes a resource.
- */
-export const adminDeleteResource = async (resourceId: string): Promise<void> => {
-  const resourceRef = doc(db, "resources", resourceId);
-  const { deleteDoc } = await import("firebase/firestore");
-  await deleteDoc(resourceRef);
-};
-
-/**
- * Updates lesson notes.
- */
-export const adminUpdateLessonNotes = async (lessonId: string, notes: string): Promise<void> => {
-  const lessonRef = doc(db, "lessons", lessonId);
-  await setDoc(lessonRef, { notes }, { merge: true });
-};
-
-// ─── Quiz & Assessment ──────────────────────────────────────────────────────
-
-/**
- * Fetches the quiz for a specific lesson.
- */
-export const getQuizByLessonId = async (lessonId: string, courseId?: string): Promise<Quiz | null> => {
-  // Optimization: Quizzes are indexed by lessonId for 1:1 mapping.
-  // Direct getDoc is more efficient and usually avoids query-rule complexity.
-  const quizRef = doc(db, "quizzes", lessonId);
-  const quizSnap = await getDoc(quizRef);
-  
-  if (quizSnap.exists()) {
-    return { id: quizSnap.id, ...quizSnap.data() } as Quiz;
-  }
-  
-  // Fallback to query if doc ID doesn't match lessonId (for legacy support)
-  const quizzesRef = collection(db, "quizzes");
-  const q = courseId
-    ? query(quizzesRef, where("courseId", "==", courseId), where("lessonId", "==", lessonId))
-    : query(quizzesRef, where("lessonId", "==", lessonId));
-    
-  const querySnapshot = await getDocs(q);
-  
-  if (!querySnapshot.empty) {
-    return { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as Quiz;
-  }
-  return null;
-};
-
-/**
- * Records a quiz attempt.
- */
-export const saveQuizAttempt = async (attempt: Omit<QuizAttempt, "id" | "attemptedAt">): Promise<string> => {
-  const attemptsRef = collection(db, "quizAttempts");
-  const newAttemptRef = doc(attemptsRef);
-  
-  const newAttempt: Omit<QuizAttempt, "id"> = {
-    ...attempt,
-    attemptedAt: serverTimestamp(),
-  };
-
-  await setDoc(newAttemptRef, newAttempt);
-  return newAttemptRef.id;
-};
-
-/**
- * Fetches the latest attempt for a quiz by a user.
- */
-export const getLatestQuizAttempt = async (userId: string, quizId: string): Promise<QuizAttempt | null> => {
-  const attemptsRef = collection(db, "quizAttempts");
-  const q = query(attemptsRef, where("userId", "==", userId), where("quizId", "==", quizId));
-  const querySnapshot = await getDocs(q);
-  
-  if (querySnapshot.empty) return null;
-  const attempts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as QuizAttempt));
-  return attempts.sort((a, b) => {
-    const dateA = (a.attemptedAt as any)?.seconds || 0;
-    const dateB = (b.attemptedAt as any)?.seconds || 0;
-    return dateB - dateA;
-  })[0];
-};
-
-/**
- * CMS: Creates or updates a quiz for a lesson.
- */
-export const adminSaveQuiz = async (quizData: Omit<Quiz, "id" | "createdAt">): Promise<void> => {
-  const quizRef = doc(db, "quizzes", quizData.lessonId); // Using lessonId as ID for 1:1 mapping
-  await setDoc(quizRef, {
-    ...quizData,
-    createdAt: serverTimestamp(),
-  }, { merge: true });
-};
-
-// ─── Reviews & Ratings ──────────────────────────────────────────────────────
-
-/**
- * Fetches all reviews for a specific course.
- */
 export const getReviewsByCourseId = async (courseId: string): Promise<Review[]> => {
-  const reviewsRef = collection(db, "reviews");
-  const q = query(reviewsRef, where("courseId", "==", courseId));
-  const querySnapshot = await getDocs(q);
+  const q = query(collection(db, "reviews"), where("courseId", "==", courseId));
+  const snap = await getDocs(q);
+  const reviews = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Review));
   
-  const reviews = querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  } as Review));
-
+  // Sort in memory to avoid index requirements
   return reviews.sort((a, b) => {
     const dateA = (a.createdAt as any)?.seconds || 0;
     const dateB = (b.createdAt as any)?.seconds || 0;
@@ -1069,62 +222,210 @@ export const getReviewsByCourseId = async (courseId: string): Promise<Review[]> 
   });
 };
 
-/**
- * Adds a new review and updates the course's average rating.
- * Only one review per user per course.
- */
-export const addReview = async (reviewData: Omit<Review, "id" | "createdAt">) => {
-  const reviewId = `${reviewData.userId}_${reviewData.courseId}`;
-  const reviewRef = doc(db, "reviews", reviewId);
-  const courseRef = doc(db, "courses", reviewData.courseId);
+export const addReview = async (review: Omit<Review, "id" | "createdAt">) => {
+  const reviewRef = doc(collection(db, "reviews"));
+  const courseRef = doc(db, "courses", review.courseId);
 
   await runTransaction(db, async (transaction) => {
-    const reviewSnap = await transaction.get(reviewRef);
-    const courseSnap = await transaction.get(courseRef);
-
-    if (!courseSnap.exists()) throw new Error("Course not found");
-
-    const courseData = courseSnap.data() as Course;
-    const oldRating = reviewSnap.exists() ? (reviewSnap.data() as Review).rating : 0;
-    const isNewReview = !reviewSnap.exists();
-
-    // Calculate new aggregation
-    let totalReviews = courseData.totalReviews || 0;
-    let totalRatingSum = (courseData.averageRating || 0) * totalReviews;
-
-    if (isNewReview) {
-      totalReviews += 1;
-      totalRatingSum += reviewData.rating;
-    } else {
-      totalRatingSum = totalRatingSum - oldRating + reviewData.rating;
-    }
-
-    const averageRating = Number((totalRatingSum / totalReviews).toFixed(1));
-
-    // Update Course aggregation
-    transaction.update(courseRef, {
-      averageRating,
-      totalReviews,
-      updatedAt: serverTimestamp()
+    transaction.set(reviewRef, {
+      ...review,
+      id: reviewRef.id,
+      createdAt: serverTimestamp(),
     });
 
-    // Save Review
-    transaction.set(reviewRef, {
-      ...reviewData,
-      createdAt: serverTimestamp()
-    }, { merge: true });
+    // Update course stats
+    const courseSnap = await transaction.get(courseRef);
+    if (courseSnap.exists()) {
+      const data = courseSnap.data() as Course;
+      const oldTotal = data.totalReviews || 0;
+      const oldAvg = data.averageRating || 0;
+      const newTotal = oldTotal + 1;
+      const newAvg = ((oldAvg * oldTotal) + review.rating) / newTotal;
+      
+      transaction.update(courseRef, {
+        totalReviews: newTotal,
+        averageRating: Number(newAvg.toFixed(1))
+      });
+    }
   });
 };
 
-/**
- * Adds a creator reply to a review.
- */
-export const addReviewReply = async (reviewId: string, replyText: string) => {
-  const reviewRef = doc(db, "reviews", reviewId);
-  await updateDoc(reviewRef, {
-    creatorReply: {
-      text: replyText,
-      repliedAt: serverTimestamp()
+// ─── Reactions ──────────────────────────────────────────────────────────────
+
+export const toggleVideoReaction = async (userId: string, lessonId: string, type: "like" | "dislike" | null) => {
+  const ref = doc(db, "video_reactions", `${userId}_${lessonId}`);
+  if (type === null) await deleteDoc(ref);
+  else await setDoc(ref, { id: ref.id, userId, lessonId, type, createdAt: serverTimestamp() });
+};
+
+export const subscribeToVideoReactions = (lessonId: string, userId: string | undefined, callback: (data: any) => void) => {
+  const q = query(collection(db, "video_reactions"), where("lessonId", "==", lessonId));
+  return onSnapshot(q, (snap) => {
+    let likes = 0, dislikes = 0, userReaction = null;
+    snap.docs.forEach(doc => {
+      const data = doc.data() as VideoReaction;
+      if (data.type === "like") likes++;
+      if (data.type === "dislike") dislikes++;
+      if (userId && data.userId === userId) userReaction = data.type;
+    });
+    callback({ likes, dislikes, userReaction });
+  });
+};
+
+// ─── Comments System ────────────────────────────────────────────────────────
+
+export const addComment = async (comment: Omit<Comment, "id" | "likes" | "replyCount" | "isEdited" | "createdAt" | "updatedAt">) => {
+  const ref = doc(collection(db, "comments"));
+  await setDoc(ref, {
+    ...comment,
+    id: ref.id,
+    likes: 0,
+    replyCount: 0,
+    isEdited: false,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+  return ref.id;
+};
+
+export const updateComment = async (commentId: string, content: string) => {
+  await updateDoc(doc(db, "comments", commentId), {
+    content,
+    isEdited: true,
+    updatedAt: serverTimestamp()
+  });
+};
+
+export const deleteComment = async (commentId: string) => {
+  // In a real app, you might want to delete replies too or mark as [deleted]
+  await deleteDoc(doc(db, "comments", commentId));
+};
+
+export const subscribeToComments = (lessonId: string, pageSize: number, lastDoc: any, callback: (comments: Comment[], lastVisible: any) => void) => {
+  let q = query(
+    collection(db, "comments"),
+    where("lessonId", "==", lessonId),
+    orderBy("createdAt", "desc"),
+    limit(pageSize)
+  );
+
+  if (lastDoc) q = query(q, startAfter(lastDoc));
+
+  return onSnapshot(q, (snap) => {
+    const comments = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comment));
+    callback(comments, snap.docs[snap.docs.length - 1]);
+  });
+};
+
+export const addReply = async (reply: Omit<CommentReply, "id" | "likes" | "isEdited" | "createdAt" | "updatedAt">) => {
+  const replyRef = doc(collection(db, "comment_replies"));
+  const commentRef = doc(db, "comments", reply.commentId);
+
+  await runTransaction(db, async (transaction) => {
+    transaction.set(replyRef, {
+      ...reply,
+      id: replyRef.id,
+      likes: 0,
+      isEdited: false,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    transaction.update(commentRef, { replyCount: increment(1) });
+  });
+  return replyRef.id;
+};
+
+export const subscribeToReplies = (commentId: string, callback: (replies: CommentReply[]) => void) => {
+  const q = query(collection(db, "comment_replies"), where("commentId", "==", commentId), orderBy("createdAt", "asc"));
+  return onSnapshot(q, (snap) => callback(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as CommentReply))));
+};
+
+export const toggleCommentLike = async (userId: string, commentId: string, type: "comment" | "reply") => {
+  const likeId = `${userId}_${commentId}`;
+  const likeRef = doc(db, "comment_likes", likeId);
+  const targetRef = doc(db, type === "comment" ? "comments" : "comment_replies", commentId);
+
+  await runTransaction(db, async (transaction) => {
+    const likeSnap = await transaction.get(likeRef);
+    if (likeSnap.exists()) {
+      transaction.delete(likeRef);
+      transaction.update(targetRef, { likes: increment(-1) });
+    } else {
+      transaction.set(likeRef, { id: likeId, userId, commentId, type, createdAt: serverTimestamp() });
+      transaction.update(targetRef, { likes: increment(1) });
     }
   });
+};
+
+export const subscribeToCommentLikes = (userId: string | undefined, callback: (likedIds: string[]) => void) => {
+  if (!userId) { callback([]); return () => {}; }
+  const q = query(collection(db, "comment_likes"), where("userId", "==", userId));
+  return onSnapshot(q, (snap) => callback(snap.docs.map(doc => (doc.data() as CommentLike).commentId)));
+};
+
+// ─── Analytics & Teacher ────────────────────────────────────────────────────
+
+export const trackLessonAnalytics = async (analytics: Omit<LessonAnalytics, "lastTracked">) => {
+  const ref = doc(db, "lesson_analytics", analytics.id);
+  await setDoc(ref, {
+    ...analytics,
+    lastTracked: serverTimestamp()
+  }, { merge: true });
+};
+
+/**
+ * Aggregates statistics for the student dashboard.
+ * Fetches all enrollments and calculates progress across courses.
+ */
+export const getUserDashboardStats = async (userId: string) => {
+  try {
+    const enrollmentsQuery = query(collection(db, "enrollments"), where("userId", "==", userId));
+    const enrollmentsSnap = await getDocs(enrollmentsQuery);
+    
+    const enrolledCourses = await Promise.all(enrollmentsSnap.docs.map(async (docSnap) => {
+      const enrollment = docSnap.data() as Enrollment;
+      const courseSnap = await getDoc(doc(db, "courses", enrollment.courseId));
+      const course = courseSnap.data() as Course;
+      
+      return {
+        courseId: enrollment.courseId,
+        courseTitle: course?.title || "Untitled Course",
+        thumbnail: course?.thumbnail || "",
+        status: enrollment.status,
+        progress: enrollment.progress || 0,
+        percentage: enrollment.progress || 0,
+        completedCount: enrollment.completedLessons || 0,
+        totalLessons: enrollment.totalLessons || course?.lessonCount || 1,
+      };
+    }));
+
+    const totalCompletedLessonsQuery = query(
+      collection(db, "lessonProgress"), 
+      where("userId", "==", userId), 
+      where("completed", "==", true)
+    );
+    const totalCompletedLessonsSnap = await getDocs(totalCompletedLessonsQuery);
+
+    return {
+      enrolledCourses,
+      totalCompletedLessons: totalCompletedLessonsSnap.size,
+    };
+  } catch (error) {
+    console.error("[FIRESTORE] Failed to fetch dashboard stats:", error);
+    throw error;
+  }
+};
+
+export const getTeacherById = async (id: string): Promise<Teacher | null> => {
+  const snap = await getDoc(doc(db, "teachers", id));
+  return snap.exists() ? (snap.data() as Teacher) : null;
+};
+
+export const getResourcesByLessonId = async (lessonId: string, courseId?: string): Promise<Resource[]> => {
+  const q = courseId 
+    ? query(collection(db, "resources"), where("courseId", "==", courseId), where("lessonId", "==", lessonId))
+    : query(collection(db, "resources"), where("lessonId", "==", lessonId));
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Resource))
+    .sort((a, b) => ((b.createdAt as any)?.seconds || 0) - ((a.createdAt as any)?.seconds || 0));
 };

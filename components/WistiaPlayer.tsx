@@ -5,28 +5,35 @@ import { useEffect, useState } from "react";
 interface WistiaPlayerProps {
   mediaId: string;
   title?: string;
+  startAt?: number;
   onComplete?: () => void;
+  onTimeUpdate?: (seconds: number, duration: number) => void;
 }
 
-export default function WistiaPlayer({ mediaId, title, onComplete }: WistiaPlayerProps) {
+export default function WistiaPlayer({ mediaId, title, startAt = 0, onComplete, onTimeUpdate }: WistiaPlayerProps) {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // Zero-Script Tracking: We use PostMessage to listen for events from the Wistia Iframe.
-    // This avoids loading Wistia's JS in the main window, preventing "Failed to fetch" errors.
     const handleMessage = (event: MessageEvent) => {
-      // Wistia sends messages from fast.wistia.net or fast.wistia.com
       if (!event.origin.includes("wistia")) return;
 
       try {
         const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
         
-        // Wistia event for video ending
+        // Handle time updates
+        if (data?.method === "timechange" || data?.event === "timechange") {
+          const seconds = data?.args?.[0] || data?.time;
+          const duration = data?.args?.[1] || data?.duration;
+          if (onTimeUpdate && typeof seconds === "number") {
+            onTimeUpdate(seconds, duration || 0);
+          }
+        }
+
+        // Handle completion
         if (data?.method === "onStateChange" && data?.args?.includes("ended")) {
           if (onComplete) onComplete();
         }
         
-        // Also handle the simple 'ended' event if sent
         if (data?.event === "ended" || (data?.method === "fireEvent" && data?.args?.[0] === "end")) {
           if (onComplete) onComplete();
         }
@@ -37,7 +44,7 @@ export default function WistiaPlayer({ mediaId, title, onComplete }: WistiaPlaye
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [onComplete]);
+  }, [onComplete, onTimeUpdate]);
 
   return (
     <div className="group relative w-full overflow-hidden bg-black shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-700 md:rounded-3xl border border-white/5">
@@ -64,7 +71,7 @@ export default function WistiaPlayer({ mediaId, title, onComplete }: WistiaPlaye
       <div className="wistia_responsive_padding" style={{ padding: "56.25% 0 0 0", position: "relative" }}>
         <div className="wistia_responsive_wrapper" style={{ height: "100%", left: 0, position: "absolute", top: 0, width: "100%" }}>
           <iframe 
-            src={`https://fast.wistia.com/embed/iframe/${mediaId}?videoFoam=true&version=v1&videoHeight=720&videoWidth=1280`} 
+            src={`https://fast.wistia.com/embed/iframe/${mediaId}?videoFoam=true&version=v1&videoHeight=720&videoWidth=1280${startAt ? `&time=${startAt}` : ""}`} 
             title={title} 
             allow="autoplay; fullscreen" 
             allowFullScreen

@@ -9,14 +9,14 @@ interface LearningShellProps {
 
 export function LearningShell({ children }: LearningShellProps) {
   return (
-    <div className="flex h-screen flex-col bg-background text-foreground overflow-hidden font-sans selection:bg-accent selection:text-white">
+    <div className="flex min-h-screen flex-col bg-background text-foreground font-sans selection:bg-accent selection:text-white">
       <AnimatePresence mode="wait">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
-          className="flex-1 flex flex-col overflow-hidden"
+          className="flex-1 flex flex-col"
         >
           {children}
         </motion.div>
