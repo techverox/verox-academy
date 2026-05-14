@@ -36,7 +36,7 @@ export function CertificatePreview({ certificate, id = "certificate-content" }: 
       </div>
 
       {/* Decorative Overlays */}
-      <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 via-transparent to-transparent z-1" />
+      <div className="absolute inset-0 bg-linear-to-tr from-primary/10 via-transparent to-transparent z-1" />
 
       {/* Content Content Content */}
       <div className="relative z-10 flex flex-col items-center justify-center h-full px-20 py-16 text-center">
@@ -46,17 +46,17 @@ export function CertificatePreview({ certificate, id = "certificate-content" }: 
           <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg">
             <ShieldCheck className="w-8 h-8" />
           </div>
-          <span className="text-2xl font-black text-white tracking-tighter uppercase">Verox Academy</span>
+          <span className="text-2xl font-bold text-white tracking-tighter uppercase">Verox Academy</span>
         </div>
 
         <div className="space-y-4 mb-10">
-          <h2 className="text-primary font-black text-xs uppercase tracking-[0.5em]">Certificate of Completion</h2>
+          <h2 className="text-primary font-bold text-xs uppercase tracking-[0.5em]">Certificate of Completion</h2>
           <div className="h-0.5 w-24 bg-primary/40 mx-auto" />
         </div>
 
         <p className="text-secondary-text font-medium text-lg italic mb-6">This is to certify that</p>
         
-        <h1 className="text-5xl font-black text-white mb-10 tracking-tight drop-shadow-lg">
+        <h1 className="text-5xl font-bold text-white mb-10 tracking-tight drop-shadow-lg">
           {certificate.studentName}
         </h1>
 
@@ -69,14 +69,14 @@ export function CertificatePreview({ certificate, id = "certificate-content" }: 
         <div className="grid grid-cols-2 gap-20 w-full mt-auto pt-10 border-t border-white/5">
           {/* Instructor Side */}
           <div className="text-left flex flex-col gap-1">
-            <p className="text-[10px] font-black uppercase tracking-widest text-secondary-text">Instructor</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-secondary-text">Instructor</p>
             <p className="text-lg font-bold text-white tracking-tight">{certificate.creatorName}</p>
             <div className="h-px w-32 bg-primary/20 mt-2" />
           </div>
 
           {/* Validation Side */}
           <div className="text-right flex flex-col items-end gap-1">
-            <p className="text-[10px] font-black uppercase tracking-widest text-secondary-text">Issue Date</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-secondary-text">Issue Date</p>
             <p className="text-lg font-bold text-white tracking-tight">{issueDate}</p>
             <div className="h-px w-32 bg-primary/20 mt-2" />
           </div>

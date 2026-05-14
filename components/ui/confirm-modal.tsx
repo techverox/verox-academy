@@ -63,7 +63,7 @@ export const ConfirmModal = ({
             {styles.icon}
           </div>
           
-          <h2 className="text-2xl font-black tracking-tight mb-3">{title}</h2>
+          <h2 className="text-2xl font-bold tracking-tight mb-3">{title}</h2>
           <p className="text-zinc-500 dark:text-zinc-400 text-sm leading-relaxed mb-8">
             {message}
           </p>
@@ -79,7 +79,7 @@ export const ConfirmModal = ({
             <button 
               onClick={onConfirm}
               disabled={isLoading}
-              className={`flex-1 py-4 font-black rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2 order-1 sm:order-2 disabled:opacity-50 ${styles.button}`}
+              className={`flex-1 py-4 font-bold rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2 order-1 sm:order-2 disabled:opacity-50 ${styles.button}`}
             >
               {isLoading && <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />}
               {confirmText}

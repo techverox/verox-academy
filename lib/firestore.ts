@@ -50,7 +50,9 @@ export const subscribeToCreatorStats = (creatorId: string, callback: (stats: Cre
       }
     },
     (error) => {
-      console.warn("[FIRESTORE] Creator Stats subscription error:", error);
+      if (error.code !== "permission-denied") {
+        console.warn("[FIRESTORE] Creator Stats subscription error:", error);
+      }
     }
   );
 };
@@ -71,18 +73,22 @@ export const subscribeToCreatorRecentEnrollments = (creatorId: string, callback:
       callback(enrollments);
     },
     (error) => {
-      console.warn("[FIRESTORE] Creator Enrollments subscription error:", error);
+      // Silence expected permission errors for unauthorized users
+      if (error.code !== "permission-denied") {
+        console.warn("[FIRESTORE] Creator Enrollments subscription error:", error);
+      }
       callback([]); // Return empty on error
     }
   );
 };
 
 /**
- * Subscribe to all users live.
+ * Subscribe to a limited list of recent users (Admin only).
+ * For full user management, use paginated fetches.
  */
-export const subscribeToAllUsers = (callback: (users: User[]) => void) => {
+export const subscribeToRecentUsers = (limitCount: number = 20, callback: (users: User[]) => void) => {
   const usersRef = collection(db, "users");
-  const q = query(usersRef, orderBy("createdAt", "desc"));
+  const q = query(usersRef, orderBy("createdAt", "desc"), limit(limitCount));
 
   return onSnapshot(q, 
     (snapshot) => {
@@ -90,7 +96,9 @@ export const subscribeToAllUsers = (callback: (users: User[]) => void) => {
       callback(users);
     },
     (error) => {
-      console.warn("[FIRESTORE] Users subscription error:", error);
+      if (error.code !== "permission-denied") {
+        console.warn("[FIRESTORE] Users subscription error:", error);
+      }
       callback([]);
     }
   );
@@ -136,11 +144,16 @@ export const submitCreatorApplication = async (application: Omit<CreatorApplicat
  */
 export const getCreatorApplicationStatus = async (userId: string): Promise<CreatorApplication | null> => {
   const applicationsRef = collection(db, "creatorApplications");
-  const q = query(applicationsRef, where("userId", "==", userId), orderBy("createdAt", "desc"), limit(1));
+  const q = query(applicationsRef, where("userId", "==", userId), limit(10));
   const querySnapshot = await getDocs(q);
   
   if (querySnapshot.empty) return null;
-  return { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as CreatorApplication;
+  const apps = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CreatorApplication));
+  return apps.sort((a, b) => {
+    const dateA = (a.createdAt as any)?.seconds || 0;
+    const dateB = (b.createdAt as any)?.seconds || 0;
+    return dateB - dateA;
+  })[0];
 };
 
 // ─── User Operations ────────────────────────────────────────────────────────
@@ -228,8 +241,7 @@ export const getCreatorAnalytics = async (creatorId: string) => {
     paymentsRef,
     where("creatorId", "==", creatorId),
     where("status", "==", "captured"),
-    where("createdAt", ">=", Timestamp.fromDate(sixMonthsAgo)),
-    orderBy("createdAt", "asc")
+    where("createdAt", ">=", Timestamp.fromDate(sixMonthsAgo))
   );
   
   const revenueSnap = await getDocs(revenueQuery);
@@ -271,17 +283,25 @@ export const getCreatorAnalytics = async (creatorId: string) => {
 // ─── Course Queries ─────────────────────────────────────────────────────────
 
 /**
- * Fetches all published courses.
+ * Fetch published courses with a safety limit for performance.
  */
-export const getCourses = async (): Promise<Course[]> => {
+export const getCourses = async (limitCount: number = 100) => {
   const coursesRef = collection(db, "courses");
-  const q = query(coursesRef, where("published", "==", true));
-  const querySnapshot = await getDocs(q);
+  const q = query(
+    coursesRef, 
+    where("published", "==", true), 
+    limit(limitCount)
+  );
   
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  } as Course));
+  const snapshot = await getDocs(q);
+  const courses = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Course[];
+  
+  // Sort by createdAt in memory to avoid needing a composite index
+  return courses.sort((a, b) => {
+    const dateA = (a.createdAt as any)?.seconds || 0;
+    const dateB = (b.createdAt as any)?.seconds || 0;
+    return dateB - dateA;
+  });
 };
 
 /**
@@ -588,26 +608,25 @@ export const getUserDashboardStats = async (userId: string) => {
   };
 };
 
-// ─── Admin Global Stats ─────────────────────────────────────────────────────
-
 /**
- * Fetches global stats for the admin dashboard.
- * NOTE: This still performs full collection counts. For production at scale,
- * use the pre-computed platformStats collection via the server-side helpers.
+ * Fetches global stats for the admin dashboard from the optimized platformStats document.
+ * This is an O(1) operation compared to O(N) collection scans.
  */
 export const getAdminGlobalStats = async () => {
-  const [coursesSnap, enrollmentsSnap, lessonsSnap, usersSnap] = await Promise.all([
-    getDocs(collection(db, "courses")),
-    getDocs(collection(db, "enrollments")),
-    getDocs(collection(db, "lessons")),
-    getDocs(collection(db, "users")),
-  ]);
+  const statsRef = doc(db, "platformStats", "global");
+  const statsSnap = await getDoc(statsRef);
+  
+  if (statsSnap.exists()) {
+    return statsSnap.data();
+  }
 
+  // Fallback to empty stats if not initialized
   return {
-    totalCourses: coursesSnap.size,
-    totalEnrollments: enrollmentsSnap.size,
-    totalLessons: lessonsSnap.size,
-    totalUsers: usersSnap.size,
+    totalCourses: 0,
+    totalEnrollments: 0,
+    totalLessons: 0,
+    totalUsers: 0,
+    totalRevenue: 0
   };
 };
 
@@ -632,13 +651,19 @@ export const getAllCoursesAdmin = async (): Promise<Course[]> => {
  */
 export const getCoursesByCreator = async (creatorId: string): Promise<Course[]> => {
   const coursesRef = collection(db, "courses");
-  const q = query(coursesRef, where("creatorId", "==", creatorId), orderBy("createdAt", "desc"));
+  const q = query(coursesRef, where("creatorId", "==", creatorId));
   const querySnapshot = await getDocs(q);
   
-  return querySnapshot.docs.map(doc => ({
+  const courses = querySnapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
   } as Course));
+
+  return courses.sort((a, b) => {
+    const dateA = (a.createdAt as any)?.seconds || 0;
+    const dateB = (b.createdAt as any)?.seconds || 0;
+    return dateB - dateA;
+  });
 };
 
 /**
@@ -879,25 +904,41 @@ export const requestPayout = async (creatorId: string, amount: number, paymentMe
  */
 export const getPayoutHistory = async (creatorId: string): Promise<PayoutRequest[]> => {
   const payoutsRef = collection(db, "payoutRequests");
-  const q = query(payoutsRef, where("creatorId", "==", creatorId), orderBy("requestedAt", "desc"));
+  const q = query(payoutsRef, where("creatorId", "==", creatorId));
   const querySnapshot = await getDocs(q);
   
-  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PayoutRequest));
+  const payouts = querySnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  } as PayoutRequest));
+
+  return payouts.sort((a, b) => {
+    const dateA = (a.requestedAt as any)?.seconds || 0;
+    const dateB = (b.requestedAt as any)?.seconds || 0;
+    return dateB - dateA;
+  });
 };
 // ─── Lesson Resources ───────────────────────────────────────────────────────
 
 /**
  * Fetches all resources for a specific lesson.
  */
-export const getResourcesByLessonId = async (lessonId: string): Promise<Resource[]> => {
+export const getResourcesByLessonId = async (lessonId: string, courseId?: string): Promise<Resource[]> => {
   const resourcesRef = collection(db, "resources");
-  const q = query(resourcesRef, where("lessonId", "==", lessonId), orderBy("createdAt", "desc"));
+  
+  // If courseId is provided, we use it for a more restrictive query that matches firestore.rules
+  const q = courseId 
+    ? query(resourcesRef, where("courseId", "==", courseId), where("lessonId", "==", lessonId))
+    : query(resourcesRef, where("lessonId", "==", lessonId));
+    
   const querySnapshot = await getDocs(q);
   
-  return querySnapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  } as Resource));
+  const resources = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Resource));
+  return resources.sort((a, b) => {
+    const dateA = (a.createdAt as any)?.seconds || 0;
+    const dateB = (b.createdAt as any)?.seconds || 0;
+    return dateB - dateA;
+  });
 };
 
 /**
@@ -938,9 +979,22 @@ export const adminUpdateLessonNotes = async (lessonId: string, notes: string): P
 /**
  * Fetches the quiz for a specific lesson.
  */
-export const getQuizByLessonId = async (lessonId: string): Promise<Quiz | null> => {
+export const getQuizByLessonId = async (lessonId: string, courseId?: string): Promise<Quiz | null> => {
+  // Optimization: Quizzes are indexed by lessonId for 1:1 mapping.
+  // Direct getDoc is more efficient and usually avoids query-rule complexity.
+  const quizRef = doc(db, "quizzes", lessonId);
+  const quizSnap = await getDoc(quizRef);
+  
+  if (quizSnap.exists()) {
+    return { id: quizSnap.id, ...quizSnap.data() } as Quiz;
+  }
+  
+  // Fallback to query if doc ID doesn't match lessonId (for legacy support)
   const quizzesRef = collection(db, "quizzes");
-  const q = query(quizzesRef, where("lessonId", "==", lessonId));
+  const q = courseId
+    ? query(quizzesRef, where("courseId", "==", courseId), where("lessonId", "==", lessonId))
+    : query(quizzesRef, where("lessonId", "==", lessonId));
+    
   const querySnapshot = await getDocs(q);
   
   if (!querySnapshot.empty) {
@@ -970,19 +1024,16 @@ export const saveQuizAttempt = async (attempt: Omit<QuizAttempt, "id" | "attempt
  */
 export const getLatestQuizAttempt = async (userId: string, quizId: string): Promise<QuizAttempt | null> => {
   const attemptsRef = collection(db, "quizAttempts");
-  const q = query(
-    attemptsRef, 
-    where("userId", "==", userId), 
-    where("quizId", "==", quizId), 
-    orderBy("attemptedAt", "desc"), 
-    limit(1)
-  );
+  const q = query(attemptsRef, where("userId", "==", userId), where("quizId", "==", quizId));
   const querySnapshot = await getDocs(q);
   
-  if (!querySnapshot.empty) {
-    return { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as QuizAttempt;
-  }
-  return null;
+  if (querySnapshot.empty) return null;
+  const attempts = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as QuizAttempt));
+  return attempts.sort((a, b) => {
+    const dateA = (a.attemptedAt as any)?.seconds || 0;
+    const dateB = (b.attemptedAt as any)?.seconds || 0;
+    return dateB - dateA;
+  })[0];
 };
 
 /**
@@ -1003,13 +1054,19 @@ export const adminSaveQuiz = async (quizData: Omit<Quiz, "id" | "createdAt">): P
  */
 export const getReviewsByCourseId = async (courseId: string): Promise<Review[]> => {
   const reviewsRef = collection(db, "reviews");
-  const q = query(reviewsRef, where("courseId", "==", courseId), orderBy("createdAt", "desc"));
+  const q = query(reviewsRef, where("courseId", "==", courseId));
   const querySnapshot = await getDocs(q);
   
-  return querySnapshot.docs.map(doc => ({
+  const reviews = querySnapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
   } as Review));
+
+  return reviews.sort((a, b) => {
+    const dateA = (a.createdAt as any)?.seconds || 0;
+    const dateB = (b.createdAt as any)?.seconds || 0;
+    return dateB - dateA;
+  });
 };
 
 /**

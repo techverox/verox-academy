@@ -133,20 +133,39 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // REVENUE BREAKDOWN (Dynamic Fee from System Settings)
+    let feePercentage = 0.2; // Default 20%
+    try {
+      const db = getAdminDb();
+      const configSnap = await db.collection("systemConfig").doc("global").get();
+      if (configSnap.exists) {
+        const config = configSnap.data()!;
+        if (typeof config.platformFee === "number") {
+          feePercentage = config.platformFee / 100;
+        }
+      }
+    } catch (err) {
+      console.warn("[PAYMENT] Failed to fetch platform fee, using default 20%", err);
+    }
+
+    const platformFee = Math.round(amountInPaise * feePercentage);
+    const creatorRevenue = amountInPaise - platformFee;
+
     // ─── 7. Create Razorpay Order ──────────────────────────────────────────
     const razorpay = new Razorpay({
       key_id: serverEnv.RAZORPAY_KEY_ID,
       key_secret: serverEnv.RAZORPAY_KEY_SECRET,
     });
 
-    // REVENUE BREAKDOWN (80/20 Split)
-    const platformFee = Math.round(amountInPaise * 0.2);
-    const creatorRevenue = amountInPaise - platformFee;
+    // SECURITY: Razorpay 'receipt' has a 40-character limit.
+    // If courseId (20) + userId (20) + prefix + timestamp are used, it will fail.
+    // We'll use a shortened, unique receipt ID.
+    const receiptId = `rcpt_${courseId.slice(0, 10)}_${Date.now().toString().slice(-8)}`;
 
     const order = await razorpay.orders.create({
       amount: amountInPaise,
       currency: "INR",
-      receipt: `receipt_${courseId}_${userId}_${Date.now()}`,
+      receipt: receiptId,
       notes: {
         courseId,
         userId,
@@ -179,6 +198,7 @@ export async function POST(req: NextRequest) {
       metadata: {
         courseTitle: course.title,
         userEmail: decodedToken.email || "",
+        receiptId,
       },
     });
 
@@ -205,8 +225,13 @@ export async function POST(req: NextRequest) {
     console.error("[RAZORPAY] Order creation error Payload:", error);
     console.error("[RAZORPAY] Order creation error:", message);
     
+    // Return a more descriptive error if we can
     return NextResponse.json(
-      { error: "Failed to create payment order", details: message },
+      { 
+        error: "Failed to create payment order", 
+        message: message, // Use 'message' for the descriptive detail
+        code: error?.error?.code || "ORDER_CREATION_FAILED"
+      },
       { status: 500 }
     );
   }

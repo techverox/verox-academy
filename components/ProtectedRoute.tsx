@@ -18,7 +18,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background">
         <div className="h-10 w-10 animate-spin rounded-full border-4 border-muted border-t-primary" />
-        <p className="mt-4 text-[10px] font-black uppercase tracking-[0.3em] text-secondary-text">Verox Academy Secure Boot</p>
+        <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.3em] text-secondary-text">Verox Academy Secure Boot</p>
       </div>
     );
   }

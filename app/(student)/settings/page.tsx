@@ -13,7 +13,8 @@ import {
   AlertCircle,
   Shield,
   Bell,
-  Eye
+  Eye,
+  Sparkles
 } from "lucide-react";
 
 export default function SettingsPage() {
@@ -62,10 +63,18 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-12 pb-20 animate-in fade-in duration-700">
-      <header>
-        <h1 className="text-4xl font-black tracking-tight text-white mb-2">Account Settings</h1>
-        <p className="text-secondary-text font-medium">Manage your profile information and account preferences.</p>
-      </header>
+      <div className="space-y-4 mb-12">
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.4em] text-blue-600">
+          <Sparkles className="w-3.5 h-3.5" />
+          System Preferences
+        </div>
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter text-foreground leading-none">
+          Account <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-cyan-500">Settings.</span>
+        </h1>
+        <p className="text-base text-muted-foreground font-medium max-w-xl leading-relaxed">
+          Manage your platform identity, security protocols, and account preferences across the Techverox network.
+        </p>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Profile Section */}
@@ -90,7 +99,7 @@ export default function SettingsPage() {
                         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
                       />
                     ) : (
-                      <span className="text-4xl font-black text-primary">{name?.charAt(0) || "U"}</span>
+                      <span className="text-4xl font-bold text-primary">{name?.charAt(0) || "U"}</span>
                     )}
                   </div>
                   <div className="absolute -bottom-2 -right-2 p-3 rounded-2xl bg-primary text-white shadow-lg cursor-pointer hover:scale-110 transition-transform">
@@ -108,7 +117,7 @@ export default function SettingsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-secondary-text ml-1">Full Name</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-secondary-text ml-1">Full Name</label>
                   <div className="relative">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                     <input 
@@ -122,7 +131,7 @@ export default function SettingsPage() {
                 </div>
 
                 <div className="space-y-2 opacity-60">
-                  <label className="text-xs font-black uppercase tracking-widest text-secondary-text ml-1">Email Address</label>
+                  <label className="text-xs font-bold uppercase tracking-widest text-secondary-text ml-1">Email Address</label>
                   <div className="relative">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                     <input 
@@ -137,7 +146,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-widest text-secondary-text ml-1">Avatar URL</label>
+                <label className="text-xs font-bold uppercase tracking-widest text-secondary-text ml-1">Avatar URL</label>
                 <div className="relative">
                   <Eye className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                   <input 
@@ -169,7 +178,7 @@ export default function SettingsPage() {
                 <Button 
                   type="submit" 
                   disabled={loading}
-                  className="px-10 py-6 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-primary/20 flex items-center gap-3"
+                  className="px-10 py-6 rounded-2xl bg-linear-to-r from-blue-600 to-cyan-500 text-white font-bold text-[11px] uppercase tracking-widest shadow-2xl shadow-blue-500/20 flex items-center gap-3 border-none"
                 >
                   {loading ? (
                     <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
@@ -243,7 +252,7 @@ export default function SettingsPage() {
             <p className="text-xs text-zinc-500 mb-6 leading-relaxed">
               Once you delete your account, there is no going back. Please be certain.
             </p>
-            <button className="w-full py-3 bg-danger/10 text-danger text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-danger hover:text-white transition-all">
+            <button className="w-full py-3 bg-danger/10 text-danger text-[10px] font-bold uppercase tracking-widest rounded-xl hover:bg-danger hover:text-white transition-all">
               Delete Account
             </button>
           </div>

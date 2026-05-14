@@ -56,7 +56,7 @@ export default function ArticleDetailPage({ params }: PageProps) {
     return (
       <div className="min-h-screen bg-background flex flex-col">
         <div className="flex-1 flex flex-col items-center justify-center p-4">
-          <h1 className="text-4xl font-black mb-4">ARTICLE NOT FOUND</h1>
+          <h1 className="text-4xl font-bold mb-4">ARTICLE NOT FOUND</h1>
           <p className="text-zinc-500 mb-8">The article you're looking for doesn't exist or has been removed.</p>
           <Link href="/blog">
             <Button>Back to Blog</Button>
@@ -85,10 +85,10 @@ export default function ArticleDetailPage({ params }: PageProps) {
 
         {/* Header */}
         <header className="mb-16">
-          <Badge className="bg-primary/10 text-primary border-primary/20 mb-6 px-4 py-1.5 text-xs font-black uppercase tracking-widest">
+          <Badge className="bg-primary/10 text-primary border-primary/20 mb-6 px-4 py-1.5 text-xs font-bold uppercase tracking-widest">
             {article.category}
           </Badge>
-          <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-8 leading-[1.1]">
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tighter mb-8 leading-[1.1]">
             {article.title}
           </h1>
           
@@ -148,7 +148,7 @@ export default function ArticleDetailPage({ params }: PageProps) {
         </div>
 
         {/* Content */}
-        <div className="prose prose-invert prose-zinc max-w-none prose-headings:font-black prose-headings:tracking-tighter prose-p:text-zinc-400 prose-p:leading-relaxed prose-a:text-primary prose-code:text-primary prose-pre:bg-zinc-900/50 prose-pre:border prose-pre:border-zinc-800 prose-img:rounded-3xl">
+        <div className="prose prose-invert prose-zinc max-w-none prose-headings:font-bold prose-headings:tracking-tighter prose-p:text-zinc-400 prose-p:leading-relaxed prose-a:text-primary prose-code:text-primary prose-pre:bg-zinc-900/50 prose-pre:border prose-pre:border-zinc-800 prose-img:rounded-3xl">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>
             {article.content}
           </ReactMarkdown>

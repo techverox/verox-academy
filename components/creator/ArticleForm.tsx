@@ -100,7 +100,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
               <ChevronLeft className="w-5 h-5" />
             </button>
           </Link>
-          <h1 className="text-3xl font-black uppercase tracking-tighter">
+          <h1 className="text-3xl font-bold uppercase tracking-tighter">
             {initialData ? "Edit Article" : "New Article"}
           </h1>
         </div>
@@ -120,7 +120,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
         {/* Main Content Area */}
         <div className="lg:col-span-2 space-y-8">
           <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-zinc-500 ml-1">Article Title</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 ml-1">Article Title</label>
             <input 
               required
               value={formData.title}
@@ -131,7 +131,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-black uppercase tracking-widest text-zinc-500 ml-1">URL Slug</label>
+            <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 ml-1">URL Slug</label>
             <div className="relative">
               <span className="absolute left-6 top-1/2 -translate-y-1/2 text-zinc-600 font-medium text-sm">/blog/</span>
               <input 
@@ -145,8 +145,8 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between ml-1">
-              <label className="text-xs font-black uppercase tracking-widest text-zinc-500">Content (Markdown)</label>
-              <div className="flex items-center gap-2 text-[10px] font-black text-zinc-600 uppercase tracking-widest">
+              <label className="text-xs font-bold uppercase tracking-widest text-zinc-500">Content (Markdown)</label>
+              <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
                 <FileText className="w-3 h-3" />
                 Supports GFM
               </div>
@@ -168,7 +168,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
           <div className="bg-zinc-900/30 border border-zinc-800 rounded-[2rem] p-8 space-y-4">
             <div className="flex items-center gap-2 mb-2">
               <ImageIcon className="w-4 h-4 text-primary" />
-              <h3 className="text-sm font-black uppercase tracking-widest text-white">Cover Image</h3>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-white">Cover Image</h3>
             </div>
             {formData.coverImage && (
               <div className="relative aspect-video rounded-2xl overflow-hidden border border-zinc-800 mb-4">
@@ -194,7 +194,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
           <div className="bg-zinc-900/30 border border-zinc-800 rounded-[2rem] p-8 space-y-4">
             <div className="flex items-center gap-2 mb-2">
               <Layout className="w-4 h-4 text-primary" />
-              <h3 className="text-sm font-black uppercase tracking-widest text-white">Excerpt</h3>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-white">Excerpt</h3>
             </div>
             <textarea 
               rows={4}
@@ -208,7 +208,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
           {/* Category & Tags */}
           <div className="bg-zinc-900/30 border border-zinc-800 rounded-[2rem] p-8 space-y-6">
             <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Category</label>
+              <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Category</label>
               <select 
                 value={formData.category}
                 onChange={e => setFormData(prev => ({ ...prev, category: e.target.value }))}
@@ -224,7 +224,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
             </div>
 
             <div className="space-y-4">
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">Tags</label>
+              <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Tags</label>
               <div className="flex items-center gap-2">
                 <input 
                   value={currentTag}
@@ -262,7 +262,7 @@ export default function ArticleForm({ initialData }: ArticleFormProps) {
                 <div className="w-5 h-5 rounded-full bg-white shadow-lg" />
               </div>
               <div className="flex flex-col">
-                <span className="text-sm font-black uppercase tracking-widest text-white">Public Visibility</span>
+                <span className="text-sm font-bold uppercase tracking-widest text-white">Public Visibility</span>
                 <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-tighter">
                   {formData.published ? "Visible on blog" : "Saved as draft"}
                 </span>

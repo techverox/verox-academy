@@ -31,6 +31,7 @@ interface RazorpayCheckoutProps {
   courseId: string;
   courseName: string;
   price: number; // Display price in rupees (for UI only)
+  autoOpen?: boolean;
   onSuccess?: () => void;
   onError?: (error: string) => void;
 }
@@ -54,6 +55,7 @@ const RazorpayCheckout: React.FC<RazorpayCheckoutProps> = ({
   courseId,
   courseName,
   price,
+  autoOpen = false,
   onSuccess,
   onError,
 }) => {
@@ -61,6 +63,13 @@ const RazorpayCheckout: React.FC<RazorpayCheckoutProps> = ({
   const [errorMessage, setErrorMessage] = useState<string>("");
   const { user } = useAuth();
   const router = useRouter();
+
+  // ─── Auto-Trigger Logic ─────────────────────────────────────────────
+  React.useEffect(() => {
+    if (autoOpen && user && state === "idle") {
+      handlePayment();
+    }
+  }, [autoOpen, user]);
 
   /**
    * Get the current user's Firebase ID token for API authentication.
@@ -76,7 +85,8 @@ const RazorpayCheckout: React.FC<RazorpayCheckoutProps> = ({
   const handlePayment = async () => {
     // ─── Pre-checks ────────────────────────────────────────────────────
     if (!user) {
-      router.push("/login/");
+      const currentUrl = encodeURIComponent(window.location.pathname + window.location.search + "&autoEnroll=true");
+      router.push(`/login/?redirect=${currentUrl}`);
       return;
     }
 
@@ -99,14 +109,24 @@ const RazorpayCheckout: React.FC<RazorpayCheckoutProps> = ({
       const orderData = await orderResponse.json();
 
       if (!orderResponse.ok) {
-        throw new Error(orderData.error || "Failed to create order");
+        // Log the detailed error from the server
+        console.error("[PAYMENT] Order creation failed:", orderData.message || orderData.error);
+        throw new Error(orderData.message || orderData.error || "Failed to create order");
       }
 
       setState("checkout_open");
 
       // ─── 2. Open Razorpay Checkout ───────────────────────────────────
+      const razorpayKey = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID;
+      
+      if (!razorpayKey) {
+        throw new Error("Razorpay Key ID is not configured. Please check your environment variables.");
+      }
+
+      console.log(`[PAYMENT] Initializing Razorpay with key: ${razorpayKey.slice(0, 8)}...`);
+
       const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: razorpayKey,
         amount: orderData.amount,
         currency: orderData.currency,
         name: "Verox Academy",
@@ -115,7 +135,6 @@ const RazorpayCheckout: React.FC<RazorpayCheckoutProps> = ({
         handler: async function (response: RazorpayResponse) {
           setState("verifying");
 
-          // ─── 3. Verify Payment (Server-Side) ─────────────────────
           try {
             const freshToken = await getAuthToken();
 
@@ -139,23 +158,18 @@ const RazorpayCheckout: React.FC<RazorpayCheckoutProps> = ({
               setState("success");
               if (onSuccess) onSuccess();
 
-              // Redirect to learning viewer after short delay
               setTimeout(() => {
                 router.push(`/learn/viewer/?id=${courseId}`);
               }, 1500);
             } else {
-              throw new Error(
-                verifyData.error || "Payment verification failed"
-              );
+              throw new Error(verifyData.error || "Payment verification failed");
             }
           } catch (err: unknown) {
-            const msg =
-              err instanceof Error ? err.message : "Verification failed";
+            const msg = err instanceof Error ? err.message : "Verification failed";
             console.error("[PAYMENT] Verification error:", msg);
             setErrorMessage(
               "Payment was successful but verification failed. " +
-                "Your access will be activated shortly via our system. " +
-                "If not, please contact support."
+                "Your access will be activated shortly. Please contact support if needed."
             );
             setState("error");
             if (onError) onError(msg);
@@ -166,27 +180,29 @@ const RazorpayCheckout: React.FC<RazorpayCheckoutProps> = ({
           email: user?.email || "",
         },
         theme: {
-          color: "#7c3aed", // Premium purple from design system
+          color: "#2563eb",
         },
         modal: {
           ondismiss: function () {
-            setState("idle");
+            // Only reset to idle if we aren't in a success or verifying state
+            setState((prev) => (prev === "checkout_open" ? "idle" : prev));
           },
-          confirm_close: true,
         },
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const RazorpayConstructor = (window as unknown as Record<string, any>).Razorpay;
-      const rzp = new RazorpayConstructor(options) as {
-        open: () => void;
-        on: (event: string, callback: (response: RazorpayError) => void) => void;
-      };
+      // Ensure Razorpay is available on window
+      const RzpConstructor = (window as any).Razorpay;
+      if (!RzpConstructor) {
+        throw new Error("Razorpay SDK failed to load. Please check your connection.");
+      }
 
-      rzp.on("payment.failed", function (response: RazorpayError) {
-        setErrorMessage(response.error.description || "Payment failed");
+      const rzp = new RzpConstructor(options);
+
+      rzp.on("payment.failed", function (response: any) {
+        const errorDesc = response.error?.description || "Payment failed or cancelled";
+        setErrorMessage(errorDesc);
         setState("error");
-        if (onError) onError(response.error.description);
+        if (onError) onError(errorDesc);
       });
 
       rzp.open();
@@ -225,7 +241,7 @@ const RazorpayCheckout: React.FC<RazorpayCheckoutProps> = ({
       <Script
         id="razorpay-checkout-js"
         src="https://checkout.razorpay.com/v1/checkout.js"
-        strategy="lazyOnload"
+        strategy="afterInteractive"
       />
 
       <div className="space-y-3">

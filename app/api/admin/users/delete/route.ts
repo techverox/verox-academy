@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "You cannot delete your own account" }, { status: 400 });
     }
 
-    await deleteUserServer(userId, adminToken.uid);
+    await deleteUserServer(userId);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[API] Failed to delete user:", error);

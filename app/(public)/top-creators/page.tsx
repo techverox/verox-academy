@@ -5,12 +5,13 @@ import { motion } from "framer-motion";
 import { collection, query, orderBy, limit, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { CreatorStats, User } from "@/types/firestore";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import Image from "next/image";
 import Link from "next/link";
 import { Trophy, Users, Star, ArrowRight, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { SectionWrapper } from "@/components/layout/SectionWrapper";
+import { ContentContainer } from "@/components/layout/ContentContainer";
 
 interface LeaderboardCreator extends CreatorStats {
   name: string;
@@ -56,52 +57,47 @@ export default function TopCreatorsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <div className="min-h-screen bg-background pb-32">
+      <SectionWrapper className="relative pt-24 pb-12 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.04),transparent_60%)] pointer-events-none" />
+        <ContentContainer>
+          <div className="max-w-4xl mx-auto text-center mb-16">
+            <Badge variant="outline" className="h-8 px-5 rounded-full border-blue-200 bg-blue-50 text-blue-600 text-[10px] font-bold uppercase tracking-[0.2em] mb-8">
+              <Trophy className="w-3.5 h-3.5 mr-2" />
+              Leaderboard
+            </Badge>
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-8">
+              The <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-cyan-500">Global Elite.</span>
+            </h1>
+            <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
+              Recognizing the educators who are transforming the future of learning on Verox Academy.
+            </p>
+          </div>
 
-      <main className="container mx-auto px-4 py-20">
-        <div className="max-w-4xl mx-auto text-center mb-20">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="inline-flex items-center gap-2 rounded-full border border-yellow-500/20 bg-yellow-500/5 px-4 py-1.5 text-sm font-medium text-yellow-500 mb-6"
-          >
-            <Trophy className="w-4 h-4" />
-            Top 10 Creators
-          </motion.div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-8 uppercase">
-            THE HALL OF <span className="text-primary italic">FAME</span>
-          </h1>
-          <p className="text-zinc-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
-            Recognizing the educators who are transforming the future of learning on Verox Academy.
-          </p>
-        </div>
-
-        <div className="max-w-5xl mx-auto">
-          {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} className="h-24 bg-zinc-900/50 border border-zinc-800 rounded-3xl animate-pulse" />
-              ))}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-6">
-              {creators.map((creator, index) => (
+          <div className="max-w-5xl mx-auto space-y-6">
+            {loading ? (
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="h-28 bg-white dark:bg-zinc-900/50 border border-border/40 rounded-4xl animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              creators.map((creator, index) => (
                 <motion.div
                   key={creator.creatorId}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.05 }}
-                  className="group relative glass p-6 md:p-8 rounded-[2.5rem] border-zinc-800/50 hover:border-primary/30 transition-all duration-300"
+                  className="group relative bg-white dark:bg-zinc-900/50 p-6 md:p-8 rounded-4xl border border-border/40 hover:border-blue-500/30 transition-all duration-300 hover:shadow-xl hover:shadow-black/2 dark:shadow-none"
                 >
                   <div className="flex flex-col md:flex-row md:items-center gap-8">
                     {/* Rank */}
                     <div className="flex items-center gap-4 md:w-16">
-                      <span className={`text-4xl font-black italic ${
-                        index === 0 ? "text-yellow-500" : 
+                      <span className={`text-3xl font-bold italic ${
+                        index === 0 ? "text-blue-600" : 
                         index === 1 ? "text-zinc-400" : 
-                        index === 2 ? "text-orange-500" : "text-zinc-700"
+                        index === 2 ? "text-orange-500" : "text-zinc-300"
                       }`}>
                         #{index + 1}
                       </span>
@@ -109,7 +105,7 @@ export default function TopCreatorsPage() {
 
                     {/* Profile */}
                     <div className="flex items-center gap-6 flex-1">
-                      <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden border-4 border-zinc-900 shadow-xl group-hover:scale-105 transition-transform duration-500">
+                      <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-3xl overflow-hidden border border-border/40 shadow-sm group-hover:scale-105 transition-transform duration-500 bg-muted">
                         <Image
                           src={creator.photoURL || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop"}
                           alt={creator.name}
@@ -117,36 +113,36 @@ export default function TopCreatorsPage() {
                           className="object-cover"
                         />
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="text-xl font-black text-white">{creator.name}</h3>
-                          <ShieldCheck className="w-4 h-4 text-primary" />
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-xl font-bold text-foreground">{creator.name}</h3>
+                          <ShieldCheck className="w-4 h-4 text-blue-500" />
                         </div>
-                        <p className="text-zinc-500 text-sm font-bold uppercase tracking-widest">@{creator.username}</p>
+                        <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">@{creator.username}</p>
                       </div>
                     </div>
 
                     {/* Stats */}
                     <div className="flex flex-wrap items-center gap-8 md:gap-12 text-center md:text-left">
                       <div>
-                        <div className="flex items-center gap-2 text-zinc-400 mb-1">
+                        <div className="flex items-center gap-2 text-muted-foreground mb-1">
                           <Users className="w-4 h-4" />
-                          <span className="text-xl font-black text-white">{creator.totalStudents.toLocaleString()}</span>
+                          <span className="text-xl font-bold text-foreground">{creator.totalStudents.toLocaleString()}</span>
                         </div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Students</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">Students</p>
                       </div>
                       <div>
-                        <div className="flex items-center gap-2 text-zinc-400 mb-1">
-                          <Star className="w-4 h-4 fill-yellow-500 text-yellow-500" />
-                          <span className="text-xl font-black text-white">4.9</span>
+                        <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                          <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                          <span className="text-xl font-bold text-foreground">4.9</span>
                         </div>
-                        <p className="text-[10px] font-black uppercase tracking-widest text-zinc-600">Avg Rating</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">Rating</p>
                       </div>
                     </div>
 
                     <div className="md:ml-auto">
                       <Link href={`/creator/${creator.username}`}>
-                        <Button variant="outline" className="rounded-full px-8 group-hover:bg-primary group-hover:text-white group-hover:border-primary transition-all">
+                        <Button className="h-12 px-8 rounded-full bg-linear-to-r from-blue-600 to-cyan-500 text-white font-semibold border-none shadow-lg shadow-blue-500/20 hover:scale-[1.02] transition-all">
                           View Studio
                           <ArrowRight className="w-4 h-4 ml-2" />
                         </Button>
@@ -154,38 +150,37 @@ export default function TopCreatorsPage() {
                     </div>
                   </div>
 
-                  {/* Aesthetic Background Sparkle for Top 1 */}
                   {index === 0 && (
-                    <div className="absolute top-0 right-0 p-4">
-                       <Trophy className="w-12 h-12 text-yellow-500/10" />
+                    <div className="absolute top-0 right-0 p-4 opacity-[0.03]">
+                       <Trophy className="w-24 h-24 text-blue-600" />
                     </div>
                   )}
                 </motion.div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Call to Action */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mt-32 text-center"
-        >
-          <div className="glass max-w-4xl mx-auto p-12 rounded-[3rem] border-primary/20">
-            <h2 className="text-3xl font-black mb-6">WANT TO BE ON THIS LIST?</h2>
-            <p className="text-zinc-400 mb-10 max-w-2xl mx-auto text-lg">
-              Start your creator journey today. Verox Academy provides the tools, traffic, and support to help you become a top educator.
-            </p>
-            <Link href="/become-creator">
-              <Button size="lg" className="rounded-full px-12 h-14 text-lg">Apply as Creator</Button>
-            </Link>
+              ))
+            )}
           </div>
-        </motion.div>
-      </main>
+        </ContentContainer>
+      </SectionWrapper>
 
-      <Footer />
+      {/* CTA */}
+      <ContentContainer className="mt-20">
+        <div className="relative rounded-5xl bg-linear-to-br from-blue-600 via-blue-600 to-cyan-500 overflow-hidden p-12 md:p-20 text-center">
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-size-[40px_40px]" />
+          <div className="relative z-10 space-y-8">
+            <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tighter">Ready to join the elite?</h2>
+            <p className="text-white/70 text-lg max-w-2xl mx-auto font-medium">
+              Start your creator journey today. Verox Academy provides the tools, audience, and support to help you become a top global educator.
+            </p>
+            <div className="flex justify-center">
+              <Link href="/become-creator">
+                <Button className="h-16 px-12 rounded-full bg-white text-blue-600 font-bold text-lg shadow-2xl shadow-blue-900/30 hover:scale-[1.02] transition-all border-none">
+                  Apply as Creator
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </ContentContainer>
     </div>
   );
 }

@@ -26,9 +26,14 @@ export default function CreatorAddCoursePage() {
     
     setLoading(true);
     try {
+      const price = Number(formData.price) || 0;
+      if (price > 500000) {
+        return alert("Maximum price allowed is ₹5,00,000");
+      }
+      
       await adminCreateCourse({
         ...formData,
-        price: Number(formData.price) || 0,
+        price,
       }, profile);
       router.push("/creator/courses");
     } catch (error) {
@@ -101,9 +106,14 @@ export default function CreatorAddCoursePage() {
                   type="number"
                   required
                   placeholder="499"
+                  max="500000"
                   className="w-full bg-secondary/30 border border-border rounded-lg pl-12 pr-6 py-4 text-lg font-bold outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all text-foreground"
                   value={formData.price}
-                  onChange={e => setFormData({ ...formData, price: e.target.value })}
+                  onChange={e => {
+                    const val = Number(e.target.value);
+                    if (val > 500000) return;
+                    setFormData({ ...formData, price: e.target.value });
+                  }}
                 />
               </div>
             </div>

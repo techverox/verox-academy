@@ -1,13 +1,8 @@
-/**
- * CourseClient — Course Detail Page (Client Component)
- * ======================================================
- * Displays course details, curriculum, and handles enrollment CTA.
- */
-
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { getCourseById, getLessonsByCourseId, isUserEnrolled, getReviewsByCourseId, addReview } from "@/lib/firestore";
+import { getCourseById, isUserEnrolled, getReviewsByCourseId, addReview } from "@/lib/firestore";
+import { getPublicCurriculum } from "@/lib/curriculum-server";
 import { Course, Lesson, Review } from "@/types/firestore";
 import { useAuth } from "@/context/auth-context";
 import Link from "next/link";
@@ -23,12 +18,26 @@ import {
   PlayCircle,
   Star,
   MessageSquare,
-  CornerDownRight
+  CornerDownRight,
+  CheckCircle2,
+  Users,
+  Calendar,
+  Lock,
+  ChevronDown,
+  HelpCircle,
+  Smartphone,
+  Globe,
+  Monitor
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import RazorpayCheckout from "@/components/RazorpayCheckout";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
+import { SectionWrapper } from "@/components/layout/SectionWrapper";
+import { ContentContainer } from "@/components/layout/ContentContainer";
+import { PageHeader } from "@/components/layout/PageHeader";
 
 function CourseViewContent() {
   const router = useRouter();
@@ -36,7 +45,7 @@ function CourseViewContent() {
   const courseId = searchParams.get("id");
   
   const [course, setCourse] = useState<Course | null>(null);
-  const [lessons, setLessons] = useState<Lesson[]>([]);
+  const [lessons, setLessons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -57,7 +66,7 @@ function CourseViewContent() {
       try {
         const [courseData, lessonsData] = await Promise.all([
           getCourseById(courseId),
-          getLessonsByCourseId(courseId)
+          getPublicCurriculum(courseId)
         ]);
         
         setCourse(courseData);
@@ -118,282 +127,255 @@ function CourseViewContent() {
   if (loading) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-primary" />
-        <p className="mt-4 text-xs font-medium text-muted-foreground">Loading course details...</p>
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-muted border-t-accent" />
+        <p className="mt-4 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">Synchronizing Course Data</p>
       </div>
     );
   }
 
-  if (!course) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-background text-center px-4">
-        <h1 className="text-3xl font-bold text-foreground">Course Not Found</h1>
-        <p className="mt-2 text-muted-foreground max-w-md">The course you are looking for might have been removed or the link is broken.</p>
-        <Link href="/courses/" className="mt-8">
-          <Button>Back to Courses</Button>
-        </Link>
-      </div>
-    );
-  }
+  if (!course) return null;
+
+  const outcomes = [
+    "Master the core architecture of the industry.",
+    "Build high-performance, professional-grade projects.",
+    "Implement enterprise-level security protocols.",
+    "Collaborate with top-tier creators and engineers.",
+    "Deploy scalable infrastructure with confidence.",
+    "Obtain industry-recognized certification."
+  ];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <div className="relative border-b border-border bg-secondary/30 py-16 lg:py-24 overflow-hidden">
-        <div className="container relative mx-auto px-6 lg:px-12">
-          <div className="max-w-3xl">
-            <div className="flex items-center gap-2 text-primary font-bold text-[10px] uppercase tracking-wider mb-4">
-              <Sparkles className="w-3.5 h-3.5" />
-              Premium Course
-            </div>
-            <h1 className="text-4xl font-bold tracking-tight text-foreground md:text-5xl leading-tight">
-              {course.title}
-            </h1>
-            
-            <div className="mt-6 flex flex-wrap items-center gap-4">
-               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background border border-border">
-                  <div className="flex text-yellow-500">
-                     {[...Array(5)].map((_, i) => (
-                       <Star key={i} className={`w-3.5 h-3.5 ${i < Math.floor(course.averageRating || 5) ? "fill-current" : "opacity-30"}`} />
-                     ))}
-                  </div>
-                  <span className="text-xs font-bold text-foreground">{course.averageRating || "5.0"}</span>
-                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide border-l border-border pl-2">
-                    {course.totalReviews || 0} Reviews
-                  </span>
-               </div>
-               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/5 border border-primary/10">
-                  <Badge variant="success" className="h-4 px-1.5 text-[8px] rounded">Verified</Badge>
-                  <span className="text-[10px] font-bold text-primary uppercase tracking-wide">480+ Students Enrolled</span>
-               </div>
-            </div>
-
-            <p className="mt-8 text-lg text-muted-foreground leading-relaxed max-w-2xl">
-              {course.description}
-            </p>
-            
-            <div className="mt-10 flex flex-wrap items-center gap-6">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-background border border-border flex items-center justify-center text-primary">
-                  <Clock className="w-5 h-5" />
+    <div className="min-h-screen bg-background pb-32">
+      {/* Premium Hero Section - Responsive Spacing & Grid */}
+      <SectionWrapper className="relative border-b border-border/40 overflow-hidden py-12 md:py-20 lg:py-32">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.06),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808005_1px,transparent_1px),linear-gradient(to_bottom,#80808005_1px,transparent_1px)] bg-size-[40px_40px]" />
+        
+        <ContentContainer className="relative z-10">
+          <div className="flex flex-col lg:grid lg:grid-cols-12 gap-10 md:gap-16 lg:gap-20">
+            {/* Left Content - Information Hierarchy */}
+            <div className="lg:col-span-7 xl:col-span-8 space-y-8 md:space-y-12">
+              <div className="space-y-6">
+                <div className="flex items-center gap-2 text-accent text-[9px] md:text-[10px] font-bold uppercase tracking-[0.4em]">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Premium Masterclass
                 </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Duration</p>
-                  <p className="text-sm font-semibold text-foreground">4 Hours</p>
+                <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-foreground leading-[0.95] text-balance">
+                  <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-cyan-500">{course.title}</span>
+                </h1>
+                
+                <div className="flex flex-wrap items-center gap-4 md:gap-6 pt-2">
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-surface border border-border/40 shadow-sm shrink-0">
+                    <div className="flex text-amber-500">
+                      {[...Array(5)].map((_, i) => (
+                        <Star key={i} className={`w-3 h-3 md:w-3.5 md:h-3.5 ${i < Math.floor(course.averageRating || 5) ? "fill-current" : "opacity-20"}`} />
+                      ))}
+                    </div>
+                    <span className="text-xs md:text-sm font-bold text-foreground tracking-tight">{course.averageRating || "5.0"}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs md:text-sm font-bold text-muted-foreground">
+                    <Users className="w-4 h-4 text-accent" />
+                    <span>480+ Learners</span>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-background border border-border flex items-center justify-center text-primary">
-                  <PlayCircle className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Content</p>
-                  <p className="text-sm font-semibold text-foreground">{lessons.length} Lessons</p>
-                </div>
+
+              {/* Video Preview Aspect - Mobile Centric */}
+              <div className="relative aspect-video rounded-4xl md:rounded-5xl overflow-hidden border border-border/40 bg-zinc-950 shadow-2xl group cursor-pointer ring-1 ring-white/5">
+                 <img src={course.thumbnail} className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-1000" />
+                 <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="h-16 w-16 md:h-20 md:w-20 rounded-full bg-accent/20 backdrop-blur-xl border border-accent/40 flex items-center justify-center text-white transition-all group-hover:scale-110 group-hover:bg-accent">
+                       <Play className="w-6 h-6 md:w-8 md:h-8 fill-current ml-1" />
+                    </div>
+                 </div>
+                 <div className="absolute bottom-4 left-6 md:bottom-6 md:left-8 flex items-center gap-3">
+                    <Badge className="bg-black/60 backdrop-blur-md border border-white/10 px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[8px] md:text-[10px] font-bold tracking-widest">PREVIEW MODULE</Badge>
+                 </div>
+              </div>
+
+              <div className="space-y-6">
+                <h3 className="text-[9px] md:text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground/40">Professional Description</h3>
+                <p className="text-lg md:text-xl text-muted-foreground leading-relaxed font-medium max-w-4xl">
+                  {course.description}
+                </p>
+              </div>
+
+              {/* Meta Blocks - Responsive Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 md:gap-8 pt-4">
+                {[
+                  { icon: Clock, label: "Duration", value: "4 Hours" },
+                  { icon: PlayCircle, label: "Lessons", value: `${lessons.length} Modules` },
+                  { icon: Calendar, label: "Updated", value: "May 2024" },
+                  { icon: Globe, label: "Access", value: "Global" }
+                ].map((meta, i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="flex items-center gap-2 text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">
+                      <meta.icon className="w-3.5 h-3.5" />
+                      {meta.label}
+                    </div>
+                    <p className="text-base md:text-lg font-bold tracking-tight">{meta.value}</p>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="container mx-auto grid gap-12 px-6 py-16 lg:grid-cols-3 lg:px-12">
-        <div className="lg:col-span-2 space-y-16">
-          <section>
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-bold tracking-tight text-foreground">Course Curriculum</h2>
-              <Badge variant="outline" className="rounded-md">{lessons.length} Lessons</Badge>
-            </div>
-            <div className="grid gap-3">
-              {lessons.map((lesson, idx) => (
-                <div key={lesson.id} className="group flex items-center justify-between p-4 rounded-xl bg-secondary/20 border border-transparent hover:border-border hover:bg-secondary/40 transition-all">
-                  <div className="flex items-center gap-4">
-                    <span className="text-[10px] font-bold text-muted-foreground/60 tracking-wider uppercase">{String(idx + 1).padStart(2, '0')}</span>
-                    <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{lesson.title}</h3>
+            {/* Right Sticky Enrollment Card - High Visibility */}
+            <div className="lg:col-span-5 xl:col-span-4 mt-12 lg:mt-0">
+              <div className="sticky top-32">
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-6 md:p-10 rounded-4xl md:rounded-5xl bg-surface border border-border/40 shadow-2xl shadow-black/10 space-y-8 md:space-y-10"
+                >
+                  <div className="space-y-4">
+                    <Badge variant="accent" className="bg-emerald-500/10 text-emerald-500 border-none px-3 py-1 rounded-lg text-[8px] md:text-[9px] font-bold tracking-widest uppercase">Limited Access Pricing</Badge>
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-4xl md:text-5xl font-bold tracking-tighter text-foreground">₹{course.price.toLocaleString('en-IN')}</span>
+                      <span className="text-base md:text-lg font-semibold text-muted-foreground/40 line-through">₹2,499</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-medium text-muted-foreground">{lesson.duration}</span>
-                    <Play className="w-3 h-3 text-muted-foreground group-hover:text-primary transition-all" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
 
-          <section className="grid gap-6 sm:grid-cols-2">
-            <Card className="p-6 border-border bg-card shadow-sm rounded-xl">
-               <ShieldCheck className="w-8 h-8 text-primary mb-4" />
-               <h4 className="text-base font-bold text-foreground mb-1">Lifetime Access</h4>
-               <p className="text-xs text-muted-foreground leading-relaxed">Enroll once and learn at your own pace. Content never expires.</p>
-            </Card>
-            <Card className="p-6 border-border bg-card shadow-sm rounded-xl">
-               <Award className="w-8 h-8 text-primary mb-4" />
-               <h4 className="text-base font-bold text-foreground mb-1">Certificate of Completion</h4>
-               <p className="text-xs text-muted-foreground leading-relaxed">Receive a professional certificate to showcase your new skills.</p>
-            </Card>
-          </section>
-
-          <section className="space-y-8">
-             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold tracking-tight text-foreground">Student Reviews</h2>
-                {isEnrolled && !userReview && (
-                  <Button 
-                   variant="outline" 
-                   size="sm"
-                   className="rounded-lg"
-                   onClick={() => setShowReviewForm(true)}
-                  >
-                    Write a Review
-                  </Button>
-                )}
-             </div>
-
-             {showReviewForm && (
-               <Card className="p-6 border-primary/20 bg-primary/5 rounded-xl">
-                  <form onSubmit={handleAddReview} className="space-y-4">
-                     <div>
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 block">Rating</label>
-                        <div className="flex gap-1">
-                           {[1, 2, 3, 4, 5].map((s) => (
-                             <button 
-                               key={s}
-                               type="button"
-                               onClick={() => setNewReview({...newReview, rating: s})}
-                               className={`p-1 transition-all ${newReview.rating >= s ? "text-yellow-500" : "text-muted-foreground"}`}
-                             >
-                               <Star className={`w-6 h-6 ${newReview.rating >= s ? "fill-current" : ""}`} />
-                             </button>
-                           ))}
-                        </div>
-                     </div>
-                     <div>
-                        <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2 block">Comment</label>
-                        <textarea 
-                         rows={3}
-                         required
-                         className="w-full rounded-lg bg-background border border-border p-4 text-sm text-foreground outline-none focus:border-primary transition-all resize-none"
-                         placeholder="Share your experience..."
-                         value={newReview.comment}
-                         onChange={(e) => setNewReview({...newReview, comment: e.target.value})}
-                        />
-                     </div>
-                     <div className="flex gap-3">
-                        <Button type="submit" size="sm" disabled={submittingReview}>
-                          {submittingReview ? "Submitting..." : "Post Review"}
+                  <div className="space-y-4">
+                    {isEnrolled ? (
+                      <Link href={`/learn/viewer/?id=${course.id}`} className="block">
+                        <Button variant="primary" className="w-full h-14 md:h-16 rounded-xl md:rounded-2xl bg-linear-to-r from-blue-600 to-cyan-500 text-white font-bold uppercase tracking-[0.2em] text-[10px] md:text-[11px] shadow-2xl shadow-blue-500/20 group border-none">
+                          Continue Mastery
+                          <ChevronRight className="ml-2 w-4 h-4 transition-transform group-hover:translate-x-1" />
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setShowReviewForm(false)}>Cancel</Button>
-                     </div>
-                  </form>
-               </Card>
-             )}
-
-             {reviews.length > 0 ? (
-               <div className="grid gap-4">
-                  {reviews.map((review) => (
-                    <div key={review.id} className="p-6 rounded-xl bg-card border border-border shadow-sm space-y-4">
-                      <div className="flex items-center justify-between">
-                         <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center text-foreground font-bold text-sm overflow-hidden">
-                               {review.userPhoto ? <img src={review.userPhoto} className="h-full w-full object-cover" /> : review.userName.charAt(0)}
-                            </div>
-                            <div>
-                               <p className="text-sm font-bold text-foreground">{review.userName}</p>
-                               <div className="flex text-yellow-500">
-                                  {[...Array(5)].map((_, i) => (
-                                    <Star key={i} className={`w-2.5 h-2.5 ${i < review.rating ? "fill-current" : "opacity-30"}`} />
-                                  ))}
-                               </div>
-                            </div>
-                         </div>
-                         <Badge variant="outline" className="text-[8px] uppercase font-bold opacity-60 rounded">Verified</Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        &ldquo;{review.comment}&rdquo;
-                      </p>
-                      {review.creatorReply && (
-                        <div className="ml-6 pt-4 border-t border-border/50 space-y-2">
-                           <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary">
-                              <CornerDownRight className="w-3.5 h-3.5" />
-                              Instructor Reply
-                           </div>
-                           <p className="text-xs text-muted-foreground bg-secondary/30 p-3 rounded-lg border border-border/30">
-                              {review.creatorReply.text}
-                           </p>
-                        </div>
-                      )}
-                   </div>
-                  ))}
-               </div>
-             ) : (
-               <div className="py-16 text-center rounded-xl border border-dashed border-border">
-                  <MessageSquare className="w-10 h-10 text-muted-foreground/30 mx-auto mb-4" />
-                  <p className="text-sm text-muted-foreground">No reviews yet. Be the first to share your experience!</p>
-               </div>
-             )}
-          </section>
-        </div>
-
-        <aside className="lg:col-start-3">
-          <div className="sticky top-24 space-y-6">
-            <Card className="p-8 border-border bg-card shadow-md rounded-xl relative overflow-hidden">
-              <div className="relative z-10">
-                <div className="mb-8">
-                  <Badge variant="success" className="mb-3 rounded px-2">Limited Time Price</Badge>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Enrollment Fee</p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-bold text-foreground">₹{course.price}</span>
-                    <span className="text-sm font-medium text-muted-foreground line-through opacity-50">₹1,999</span>
+                      </Link>
+                    ) : (
+                      <RazorpayCheckout
+                        courseId={course.id}
+                        courseName={course.title}
+                        price={course.price}
+                        autoOpen={searchParams.get("autoEnroll") === "true"}
+                        onSuccess={() => setIsEnrolled(true)}
+                        onError={(error) => console.error("Payment failed:", error)}
+                      />
+                    )}
                   </div>
-                </div>
 
-                {isEnrolled ? (
-                  <Link href={`/learn/viewer/?id=${course.id}`} className="block">
-                    <Button size="lg" className="w-full rounded-lg">
-                      Continue Learning
-                      <ChevronRight className="ml-2 w-4 h-4" />
-                    </Button>
-                  </Link>
-                ) : (
-                  <RazorpayCheckout
-                    courseId={course.id}
-                    courseName={course.title}
-                    price={course.price}
-                    onSuccess={() => setIsEnrolled(true)}
-                    onError={(error) => console.error("Payment failed:", error)}
-                  />
-                )}
+                  <div className="space-y-4 md:space-y-5 pt-4">
+                    {[
+                      { icon: InfinityIcon, text: "Lifetime Access to Curriculum" },
+                      { icon: Award, text: "Verified Completion Certificate" },
+                      { icon: ShieldCheck, text: "Secure Institutional Enrollment" },
+                      { icon: Monitor, text: "Access on all Global Nodes" }
+                    ].map((feature, i) => (
+                      <div key={i} className="flex items-center gap-3 md:gap-4 text-xs font-bold text-muted-foreground">
+                        <feature.icon className="w-3.5 h-3.5 md:w-4 md:h-4 text-accent" />
+                        {feature.text}
+                      </div>
+                    ))}
+                  </div>
 
-                <div className="mt-8 space-y-3">
-                   <div className="flex items-center gap-2.5 text-xs font-medium text-muted-foreground">
-                     <InfinityIcon className="w-3.5 h-3.5 text-primary" />
-                     Full lifetime access
-                   </div>
-                   <div className="flex items-center gap-2.5 text-xs font-medium text-muted-foreground">
-                     <Award className="w-3.5 h-3.5 text-primary" />
-                     Certificate of completion
-                   </div>
-                   <div className="flex items-center gap-2.5 text-xs font-medium text-muted-foreground">
-                     <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-                     Secure payment verification
-                   </div>
-                </div>
+                  <div className="pt-8 border-t border-border/40">
+                     <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-muted-foreground/30 text-center">
+                        SECURED BY TECHVEROX PROTOCOLS
+                     </p>
+                  </div>
+                </motion.div>
               </div>
-            </Card>
-
-            <div className="p-6 rounded-xl border border-dashed border-border text-center">
-              <p className="text-[10px] font-medium text-muted-foreground">
-                Need help? <Link href="/contact" className="text-primary hover:underline">Contact Support</Link>
-              </p>
             </div>
           </div>
-        </aside>
-      </div>
+        </ContentContainer>
+      </SectionWrapper>
+
+      {/* Main Content Sections - Adaptive Spacing */}
+      <ContentContainer className="py-16 md:py-24 lg:py-32">
+        <div className="grid gap-16 md:gap-24 lg:grid-cols-12">
+          <div className="lg:col-span-8 space-y-24 md:space-y-32">
+            {/* Key Outcomes */}
+            <section className="space-y-10 md:space-y-12">
+               <h2 className="text-3xl md:text-4xl font-bold tracking-tighter text-foreground">What you will master.</h2>
+               <div className="grid gap-4 md:gap-6 sm:grid-cols-2">
+                 {outcomes.map((outcome, i) => (
+                   <div key={i} className="flex items-start gap-4 p-6 md:p-8 rounded-3xl md:rounded-4xl bg-surface border border-border/40 shadow-sm">
+                      <CheckCircle2 className="w-4.5 h-4.5 md:w-5 md:h-5 text-accent shrink-0 mt-0.5" />
+                      <p className="text-sm font-bold text-muted-foreground leading-relaxed">{outcome}</p>
+                   </div>
+                 ))}
+               </div>
+            </section>
+
+            {/* Curriculum - Hardened List */}
+            <section className="space-y-10 md:space-y-12">
+              <div className="flex items-center justify-between px-2">
+                <h2 className="text-3xl md:text-4xl font-bold tracking-tighter text-foreground">Curriculum.</h2>
+                <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest px-3 py-1 bg-muted border-none">{lessons.length} Modules</Badge>
+              </div>
+              <div className="space-y-4">
+                <div className="rounded-4xl md:rounded-4xl border border-border/40 overflow-hidden bg-surface shadow-sm">
+                   {lessons.map((lesson, idx) => (
+                      <div 
+                        key={lesson.id} 
+                        className={cn(
+                          "group flex items-center justify-between p-5 md:p-6 transition-all hover:bg-muted/30",
+                          idx !== lessons.length - 1 && "border-b border-border/20"
+                        )}
+                      >
+                        <div className="flex items-center gap-4 md:gap-6 min-w-0">
+                           <span className="text-[10px] font-bold text-muted-foreground/30 uppercase tracking-[0.3em] shrink-0">{String(idx + 1).padStart(2, '0')}</span>
+                           <div className="space-y-0.5 md:space-y-1 min-w-0">
+                              <h4 className="text-sm md:text-base font-bold tracking-tight text-foreground group-hover:text-accent transition-colors truncate pr-2">{lesson.title}</h4>
+                              <p className="text-[8px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Video Module</p>
+                           </div>
+                        </div>
+                        <div className="flex items-center gap-4 md:gap-6 shrink-0">
+                           <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground/60">{lesson.duration}</span>
+                           <div className="h-9 w-9 md:h-10 md:w-10 rounded-lg md:rounded-xl bg-muted border border-border/40 flex items-center justify-center text-muted-foreground/40 group-hover:bg-accent/10 group-hover:text-accent group-hover:border-accent/20 transition-all">
+                              <Lock className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                           </div>
+                        </div>
+                      </div>
+                   ))}
+                </div>
+              </div>
+            </section>
+
+            {/* Creator Profile - Adaptive Proportions */}
+            <section className="space-y-10 md:space-y-12">
+               <h2 className="text-3xl md:text-4xl font-bold tracking-tighter text-foreground">Meet your Instructor.</h2>
+               <div className="p-6 md:p-12 rounded-4xl md:rounded-5xl bg-zinc-950 text-white relative overflow-hidden ring-1 ring-white/5">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(37,99,235,0.1),transparent_50%)]" />
+                  <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-start md:items-center gap-8 md:gap-12">
+                     <div className="h-32 w-32 md:h-48 md:w-48 rounded-4xl md:rounded-5xl overflow-hidden border-2 border-white/10 shrink-0 shadow-2xl">
+                        <img src={course.creatorPhoto || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=200&h=200&auto=format&fit=crop"} className="w-full h-full object-cover" />
+                     </div>
+                     <div className="space-y-5 md:space-y-6 text-center sm:text-left">
+                        <div className="space-y-1">
+                           <h3 className="text-3xl md:text-4xl font-bold tracking-tighter leading-none">{course.creatorName || "Elite Instructor"}</h3>
+                           <p className="text-[10px] md:text-[11px] font-bold uppercase tracking-[0.4em] text-accent">Lead Professional Creator</p>
+                        </div>
+                        <p className="text-zinc-400 font-medium leading-relaxed max-w-lg text-sm md:text-base">
+                           With over a decade of industry experience architecting high-performance digital systems, our instructors bring unparalleled technical depth to every masterclass.
+                        </p>
+                        <div className="flex items-center justify-center sm:justify-start gap-8 md:gap-12 pt-2">
+                           <div className="space-y-1">
+                              <p className="text-2xl md:text-3xl font-bold tracking-tighter">45K+</p>
+                              <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-zinc-600">Total Students</p>
+                           </div>
+                           <div className="space-y-1">
+                              <p className="text-2xl md:text-3xl font-bold tracking-tighter">4.9/5</p>
+                              <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest text-zinc-600">Mentor Rating</p>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </section>
+          </div>
+        </div>
+      </ContentContainer>
     </div>
   );
 }
 
 export default function CourseClient() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-background text-white">Loading...</div>}>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-background text-white">
+      <div className="h-10 w-10 animate-spin rounded-full border-2 border-muted border-t-accent" />
+    </div>}>
       <CourseViewContent />
     </Suspense>
   );

@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense, useCallback, useRef } from "react";
 import { getLessonsByCourseId, getCourseById, getUserProgress, markLessonComplete, getResourcesByLessonId, getQuizByLessonId, getLatestQuizAttempt, saveQuizAttempt } from "@/lib/firestore";
 import { Lesson, Course, Resource, Quiz, QuizAttempt, Question } from "@/types/firestore";
-import { useAuth } from "@/context/auth-context";
+import { useAuth } from "@/hooks/use-auth";
 import WistiaPlayer from "@/components/WistiaPlayer";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -16,7 +16,6 @@ import {
   Play, 
   PlayCircle,
   ChevronRight, 
-  ArrowLeft,
   Files,
   Sparkles,
   Award,
@@ -26,11 +25,26 @@ import {
   Trophy as TrophyIcon,
   Clock,
   Info,
-  Maximize2
+  Maximize2,
+  Layout,
+  BookOpen,
+  Zap,
+  Target,
+  FileText,
+  MessageSquare,
+  ChevronDown,
+  Lock,
+  ArrowLeft,
+  ArrowRight,
+  Monitor,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
 import { CourseCompletionModal } from "@/components/CourseCompletionModal";
+import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 function LearnViewerContent() {
   const router = useRouter();
@@ -43,7 +57,7 @@ function LearnViewerContent() {
   const [activeLesson, setActiveLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
   const [marking, setMarking] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Default to closed on mobile
   const [activeTab, setActiveTab] = useState<"content" | "resources" | "quiz">("content");
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [resources, setResources] = useState<Resource[]>([]);
@@ -56,6 +70,13 @@ function LearnViewerContent() {
   
   const { user, loading: authLoading } = useAuth();
   const sidebarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Auto-open sidebar on desktop
+    if (window.innerWidth >= 1024) {
+      setIsSidebarOpen(true);
+    }
+  }, []);
 
   useEffect(() => {
     async function fetchData() {
@@ -75,7 +96,6 @@ function LearnViewerContent() {
         const publishedLessons = lessonsData.filter(l => l.published !== false);
         setLessons(publishedLessons);
         
-        // Pick first lesson or look for query param?
         const lessonId = searchParams.get("lesson");
         if (lessonId) {
           const found = publishedLessons.find(l => l.id === lessonId);
@@ -103,10 +123,10 @@ function LearnViewerContent() {
 
   useEffect(() => {
     async function fetchResources() {
-      if (!activeLesson) return;
+      if (!activeLesson || !courseId) return;
       setResourcesLoading(true);
       try {
-        const data = await getResourcesByLessonId(activeLesson.id);
+        const data = await getResourcesByLessonId(activeLesson.id, courseId);
         setResources(data);
       } catch (error) {
         console.error("Failed to fetch resources:", error);
@@ -119,13 +139,13 @@ function LearnViewerContent() {
 
   useEffect(() => {
     async function fetchQuiz() {
-      if (!activeLesson || !user) return;
+      if (!activeLesson || !user || !courseId) return;
       setQuizLoading(true);
       setQuizResult(null);
       setQuizAnswers([]);
       try {
         const [quizData, attemptData] = await Promise.all([
-          getQuizByLessonId(activeLesson.id),
+          getQuizByLessonId(activeLesson.id, courseId),
           getLatestQuizAttempt(user.uid, activeLesson.id)
         ]);
         setQuiz(quizData);
@@ -163,7 +183,6 @@ function LearnViewerContent() {
         answers: quizAnswers
       });
       
-      // If passed, we can mark lesson as complete automatically
       if (passed && !completedLessonIds.includes(activeLesson.id)) {
         await handleMarkComplete();
       }
@@ -191,15 +210,12 @@ function LearnViewerContent() {
       await markLessonComplete(user.uid, courseId, activeLesson.id);
       setCompletedLessonIds(prev => [...prev, activeLesson.id]);
       
-      // Auto Progression Logic
       const currentIndex = lessons.findIndex(l => l.id === activeLesson.id);
       if (currentIndex < lessons.length - 1) {
-        // Move to next lesson after a short delay
         setTimeout(() => {
           setActiveLesson(lessons[currentIndex + 1]);
         }, 2000);
       } else {
-        // Check if all lessons are now completed
         const updatedCompleted = [...completedLessonIds, activeLesson.id];
         if (updatedCompleted.length >= lessons.length) {
           setShowCompletionModal(true);
@@ -214,81 +230,80 @@ function LearnViewerContent() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background text-foreground">
+      <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-6">
           <div className="relative">
-            <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+            <div className="h-12 w-12 animate-spin rounded-full border-2 border-muted border-t-accent shadow-sm" />
           </div>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Loading Module...</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground/60">Initializing Environment</p>
         </div>
       </div>
     );
   }
 
-  if (!course || lessons.length === 0) {
-    return (
-      <div className="flex h-screen flex-col items-center justify-center bg-background text-foreground text-center px-4">
-        <div className="w-16 h-16 bg-secondary rounded-xl flex items-center justify-center mb-6">
-          <Info className="w-8 h-8 text-muted-foreground" />
-        </div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">No Lessons Found</h1>
-        <p className="mt-2 max-w-md text-muted-foreground text-sm">
-          This course doesn&apos;t have any published lessons yet.
-        </p>
-        <Link href="/dashboard/" className="mt-8">
-          <Button size="lg" className="rounded-lg px-8">Back to Dashboard</Button>
-        </Link>
-      </div>
-    );
-  }
+  if (!course || lessons.length === 0) return null;
+
+  const progressPercentage = Math.round((completedLessonIds.length / lessons.length) * 100);
 
   return (
-    <div className="flex h-screen flex-col bg-background text-foreground overflow-hidden">
-      {/* Header Panel */}
-      <header className="flex h-20 shrink-0 items-center justify-between border-b border-border bg-card/80 px-6 backdrop-blur-xl z-30">
-        <div className="flex items-center gap-6">
-          <Link href={`/courses/view/?id=${course.id}`} className="group p-2.5 hover:bg-secondary rounded-2xl text-muted-foreground hover:text-foreground transition-all">
-            <ChevronLeft className="h-5 w-5 group-hover:-translate-x-1 transition-transform" />
+    <div className="flex h-screen flex-col bg-background text-foreground overflow-hidden font-sans relative">
+      {/* Immersive Header - Unified Design */}
+      <header className="flex h-20 shrink-0 items-center justify-between border-b border-border/40 bg-background/80 px-8 backdrop-blur-3xl z-40">
+        <div className="flex items-center gap-6 min-w-0">
+          <Link href={`/courses/view/?id=${course.id}`} className="group h-12 w-12 flex items-center justify-center bg-muted/40 border border-border/40 rounded-2xl text-muted-foreground hover:text-foreground hover:bg-muted transition-all shrink-0">
+            <ChevronLeft className="h-6 w-6 group-hover:-translate-x-1 transition-transform" />
           </Link>
-          <div className="hidden h-10 w-px bg-border md:block" />
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary truncate max-w-[200px]">
-              {course.title}
-            </span>
-            <span className="text-sm font-bold text-foreground truncate max-w-[300px] mt-0.5">
+          <div className="h-8 w-px bg-border/40 hidden lg:block" />
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-accent leading-none truncate max-w-[120px] md:max-w-none">
+                {course.title}
+              </span>
+              <Badge className="h-4 px-2 text-[8px] font-bold uppercase tracking-widest bg-accent/10 text-accent border-none rounded">Enrolled</Badge>
+            </div>
+            <h2 className="text-lg font-bold text-foreground truncate max-w-[180px] sm:max-w-[300px] md:max-w-[400px] mt-1 tracking-tight">
               {activeLesson?.title}
-            </span>
+            </h2>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="hidden items-center gap-4 md:flex pr-6 border-r border-border">
-             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-               {completedLessonIds.length}/{lessons.length} Modules
-             </span>
-             <div className="h-2 w-32 rounded-full bg-secondary overflow-hidden shadow-inner">
-               <div 
-                 className="h-full bg-primary shadow-[0_0_12px_rgba(139,92,246,0.4)] transition-all duration-1000" 
-                 style={{ width: `${(completedLessonIds.length / lessons.length) * 100}%` }}
-               />
+        <div className="flex items-center gap-10">
+          <div className="hidden lg:flex items-center gap-10">
+             <div className="flex flex-col items-end gap-1">
+                <span className="text-[9px] font-bold uppercase tracking-[0.4em] text-muted-foreground">Course Progress</span>
+                <span className="text-xs font-bold text-foreground">{progressPercentage}% Mastery</span>
+             </div>
+             <div className="h-1.5 w-48 rounded-full bg-muted overflow-hidden border border-border/40">
+                <motion.div 
+                   initial={{ width: 0 }}
+                   animate={{ width: `${progressPercentage}%` }}
+                   transition={{ duration: 1.5, ease: [0.23, 1, 0.32, 1] }}
+                   className="h-full bg-linear-to-r from-blue-600 to-cyan-500 shadow-sm"
+                />
              </div>
           </div>
-          <Button 
-            variant={isSidebarOpen ? "secondary" : "primary"}
-            size="icon"
+          <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="rounded-xl"
+            className={cn(
+              "h-12 w-12 flex items-center justify-center rounded-2xl transition-all border shrink-0",
+              isSidebarOpen ? "bg-accent text-white border-accent shadow-xl shadow-accent/20" : "bg-muted/40 text-muted-foreground border-border/40 hover:bg-muted hover:text-foreground"
+            )}
           >
-            <Menu className="h-5 w-5" />
-          </Button>
+            <Layout className="h-5 w-5" />
+          </button>
         </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Main Player Content */}
-        <main className={`flex-1 overflow-y-auto scrollbar-hide transition-all duration-500 ${isSidebarOpen ? "lg:mr-[400px]" : "mr-0"}`}>
-          <div className="w-full bg-black">
-            <div className="mx-auto max-w-6xl aspect-video">
+        <main className={cn(
+          "flex-1 overflow-y-auto transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] relative pb-12",
+          isSidebarOpen ? "lg:mr-[420px]" : "mr-0"
+        )}>
+          {/* Cinematic Video Player Section */}
+          <div className="w-full bg-black relative">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(37,99,235,0.05),transparent)] pointer-events-none" />
+            
+            <div className="mx-auto max-w-[1600px] aspect-video relative z-10 shadow-2xl">
               {activeLesson && (
                 <WistiaPlayer
                   key={activeLesson.id}
@@ -300,277 +315,217 @@ function LearnViewerContent() {
             </div>
           </div>
 
-          <div className="mx-auto max-w-5xl p-6 lg:p-12">
-            <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
-              <div className="flex-1 space-y-8">
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest">
-                    Module {lessons.indexOf(activeLesson!) + 1}
-                  </div>
-                  {completedLessonIds.includes(activeLesson?.id || "") && (
-                    <div className="px-4 py-1.5 rounded-full bg-success/10 border border-success/20 text-success text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-                      <CheckCircle2 className="w-3 h-3" />
-                      Completed
-                    </div>
-                  )}
-                  <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest flex items-center gap-2 bg-secondary px-4 py-1.5 rounded-full">
-                    <Clock className="w-3.5 h-3.5" />
-                    {activeLesson?.duration}
-                  </span>
+          <div className="mx-auto max-w-5xl p-6 sm:p-10 lg:p-20">
+            <div className="space-y-16">
+              <div className="flex flex-wrap items-center gap-8">
+                <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-muted/40 border border-border/40">
+                   <div className="h-6 w-6 rounded-lg bg-accent/20 flex items-center justify-center text-accent text-[10px] font-bold">
+                      {lessons.indexOf(activeLesson!) + 1}
+                   </div>
+                   <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Current Module</span>
                 </div>
                 
-                <h2 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-                  {activeLesson?.title}
-                </h2>
-
-                <div className="flex bg-secondary/50 p-1 rounded-lg border border-border">
-                <button 
-                  onClick={() => setActiveTab("content")}
-                  className={`flex-1 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${activeTab === "content" ? "bg-card text-foreground shadow-sm border border-border" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  Content
-                </button>
-                <button 
-                  onClick={() => setActiveTab("resources")}
-                  className={`flex-1 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${activeTab === "resources" ? "bg-card text-foreground shadow-sm border border-border" : "text-muted-foreground hover:text-foreground"}`}
-                >
-                  Resources
-                </button>
-                {quiz && (
-                  <button 
-                    onClick={() => setActiveTab("quiz")}
-                    className={`flex-1 px-4 py-2 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${activeTab === "quiz" ? "bg-card text-foreground shadow-sm border border-border" : "text-muted-foreground hover:text-foreground"}`}
-                  >
-                    Quiz
-                  </button>
+                {completedLessonIds.includes(activeLesson?.id || "") && (
+                  <Badge className="bg-emerald-500/10 text-emerald-500 border-none font-bold text-[10px] py-2 px-5 rounded-xl tracking-widest shrink-0">
+                    <CheckCircle2 className="w-3.5 h-3.5 mr-2" /> MASTERED
+                  </Badge>
                 )}
-              </div>
-
-                <div className="py-6 animate-in fade-in duration-500">
-                  {activeTab === "content" ? (
-                    <div className="prose prose-zinc dark:prose-invert prose-lg max-w-none text-foreground">
-                       {activeLesson?.notes ? (
-                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                           {activeLesson.notes}
-                         </ReactMarkdown>
-                       ) : (
-                         <p className="text-muted-foreground text-lg leading-relaxed font-medium">
-                           {activeLesson?.description || "In this lesson, we will cover the core concepts of " + activeLesson?.title + ". Make sure to follow along and take notes."}
-                         </p>
-                       )}
-                    </div>
-                  ) : activeTab === "resources" ? (
-                    <div className="space-y-4">
-                      {resourcesLoading ? (
-                        <div className="flex items-center justify-center py-12">
-                          <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                        </div>
-                      ) : resources.length > 0 ? (
-                        <div className="grid gap-4 sm:grid-cols-2">
-                          {resources.map((resource) => (
-                            <a 
-                              key={resource.id}
-                              href={resource.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-4 p-5 rounded-5xl bg-card border border-border hover:border-primary/50 hover:shadow-xl hover:shadow-primary/5 transition-all group"
-                            >
-                              <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
-                                <Files className="w-6 h-6" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-black text-foreground truncate">{resource.title}</p>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mt-1">
-                                  {resource.type} • {resource.size ? (resource.size / 1024 / 1024).toFixed(2) + " MB" : "View Resource"}
-                                </p>
-                              </div>
-                            </a>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center py-16 px-6 rounded-7xl bg-secondary/30 border border-dashed border-border">
-                           <div className="w-16 h-16 rounded-4xl bg-secondary flex items-center justify-center mb-6">
-                             <Files className="w-8 h-8 text-muted-foreground" />
-                           </div>
-                           <p className="text-sm font-black text-foreground mb-1">No resources available</p>
-                           <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Downloadable materials for this lesson will appear here.</p>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                       {quizLoading ? (
-                         <div className="flex items-center justify-center py-20">
-                            <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                         </div>
-                       ) : quiz ? (
-                         <div className="space-y-10">
-                            {/* Quiz Header */}
-                            <div className="flex items-center justify-between p-8 rounded-6xl bg-primary/5 border border-primary/20">
-                               <div className="flex items-center gap-6">
-                                  <div className="h-16 w-16 rounded-3xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg shadow-primary/20">
-                                     <BrainCircuit className="w-8 h-8" />
-                                  </div>
-                                  <div>
-                                     <h3 className="text-xl font-black text-foreground">{quiz.title}</h3>
-                                     <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mt-1">Passing Score: {quiz.passingScore}% • {quiz.questions.length} Questions</p>
-                                  </div>
-                               </div>
-                               {latestAttempt && (
-                                 <div className={`h-12 px-6 rounded-2xl flex items-center gap-2 border font-black text-[10px] uppercase tracking-widest ${latestAttempt.passed ? "bg-success/10 border-success/20 text-success" : "bg-destructive/10 border-destructive/20 text-destructive"}`}>
-                                    Last Result: {latestAttempt.score}%
-                                 </div>
-                               )}
-                            </div>
-
-                            {quizResult ? (
-                              <div className="text-center py-16 space-y-8 bg-card rounded-[3.5rem] border border-border shadow-2xl">
-                                 <div className={`mx-auto h-24 w-24 rounded-5xl flex items-center justify-center ${quizResult.passed ? "bg-success text-success-foreground shadow-[0_0_40px_rgba(34,197,94,0.3)]" : "bg-destructive text-destructive-foreground shadow-[0_0_40px_rgba(239,68,68,0.3)]"}`}>
-                                    {quizResult.passed ? <TrophyIcon className="w-12 h-12" /> : <ArrowLeft className="w-12 h-12 rotate-90" />}
-                                 </div>
-                                 <div>
-                                    <h4 className="text-4xl font-black text-foreground">{quizResult.passed ? "Excellent Performance!" : "Practice Makes Perfect"}</h4>
-                                    <p className="text-muted-foreground font-medium mt-3 text-lg">You achieved a score of <span className={`font-black ${quizResult.passed ? "text-success" : "text-destructive"}`}>{quizResult.score}%</span></p>
-                                 </div>
-                                 <Button 
-                                   onClick={() => { setQuizResult(null); setQuizAnswers([]); }}
-                                   variant="outline"
-                                   className="rounded-2xl px-12 h-14 font-black uppercase tracking-widest text-[10px]"
-                                 >
-                                    Try Again
-                                 </Button>
-                              </div>
-                            ) : (
-                              <div className="space-y-12">
-                                {quiz.questions.map((q, qIdx) => (
-                                  <div key={q.id} className="space-y-6">
-                                     <div className="flex gap-6">
-                                        <span className="shrink-0 h-10 w-10 rounded-2xl bg-secondary border border-border text-foreground flex items-center justify-center text-xs font-black shadow-sm">
-                                           {qIdx + 1}
-                                        </span>
-                                        <h5 className="text-xl font-black text-foreground leading-relaxed">{q.text}</h5>
-                                     </div>
-                                     <div className="grid gap-4 pl-16">
-                                        {q.options.map((opt, oIdx) => (
-                                          <button
-                                            key={oIdx}
-                                            onClick={() => {
-                                              const newAns = [...quizAnswers];
-                                              newAns[qIdx] = oIdx;
-                                              setQuizAnswers(newAns);
-                                            }}
-                                            className={`w-full text-left p-5 rounded-4xl border transition-all font-bold ${
-                                              quizAnswers[qIdx] === oIdx 
-                                              ? "bg-primary/10 border-primary text-foreground shadow-lg shadow-primary/5 scale-[1.02]" 
-                                              : "bg-card border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                                            }`}
-                                          >
-                                            <div className="flex items-center gap-4">
-                                              <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all ${quizAnswers[qIdx] === oIdx ? "border-primary bg-primary" : "border-border"}`}>
-                                                {quizAnswers[qIdx] === oIdx && <div className="h-2 w-2 rounded-full bg-primary-foreground" />}
-                                              </div>
-                                              {opt}
-                                            </div>
-                                          </button>
-                                        ))}
-                                     </div>
-                                  </div>
-                                ))}
-                                <div className="pt-10 border-t border-border">
-                                   <Button 
-                                     size="lg" 
-                                     className="w-full h-16 rounded-5xl text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-primary/20"
-                                     disabled={quizAnswers.length < quiz.questions.length || quizAnswers.includes(undefined as any)}
-                                     onClick={handleQuizSubmit}
-                                   >
-                                      Evaluate Knowledge
-                                   </Button>
-                                </div>
-                              </div>
-                            )}
-                         </div>
-                       ) : (
-                         <div className="flex flex-col items-center justify-center py-20 px-6 text-center bg-secondary/20 rounded-7xl border border-dashed border-border">
-                            <HelpCircle className="w-16 h-16 text-muted-foreground mb-6 opacity-20" />
-                            <p className="text-sm font-black text-foreground mb-1">Knowledge Check Offline</p>
-                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">This lesson doesn&apos;t have an evaluation component.</p>
-                         </div>
-                       )}
-                    </div>
-                  )}
+                
+                <div className="flex items-center gap-3 text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-muted/20 px-4 py-2 rounded-xl border border-border/40">
+                  <Clock className="w-3.5 h-3.5 text-accent" />
+                  {activeLesson?.duration}
                 </div>
               </div>
 
-              <div className="shrink-0 flex flex-col gap-4 sticky top-6">
-                 {!completedLessonIds.includes(activeLesson?.id || "") ? (
-                   <Button 
-                     size="lg" 
-                     className="w-full md:w-auto min-w-[240px] h-16 rounded-2xl shadow-xl shadow-primary/20 text-[10px] font-black uppercase tracking-widest"
-                     onClick={handleMarkComplete}
-                     disabled={marking}
-                   >
-                     {marking ? (
-                       <div className="flex items-center gap-3">
-                         <Loader2 className="w-4 h-4 animate-spin" />
-                         Syncing...
-                       </div>
-                     ) : "Mark as Completed"}
-                   </Button>
-                 ) : (
-                   <div className="flex items-center gap-4 px-8 py-5 rounded-4xl bg-success/10 border border-success/20 text-success shadow-lg shadow-success/5">
-                     <CheckCircle2 className="w-6 h-6" />
-                     <span className="text-[10px] font-black uppercase tracking-widest">Module Completed</span>
-                   </div>
-                 )}
-                  <Button 
-                    variant="outline" 
-                    size="lg" 
-                    className="w-full md:w-auto min-w-[240px] h-16 rounded-2xl group border-border hover:border-primary/50 text-[10px] font-black uppercase tracking-widest"
-                    onClick={() => {
-                      const currentIndex = lessons.findIndex(l => l.id === activeLesson?.id);
-                      if (currentIndex < lessons.length - 1) {
-                        setActiveLesson(lessons[currentIndex + 1]);
-                      }
-                    }}
-                    disabled={lessons.indexOf(activeLesson!) === lessons.length - 1}
+              <div className="space-y-10">
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter text-foreground leading-tight text-balance">
+                  {activeLesson?.title}
+                </h1>
+                
+                <div className="flex overflow-x-auto bg-muted/40 p-1.5 rounded-2xl border border-border/40 w-fit shadow-sm scrollbar-hide no-scrollbar max-w-full">
+                  {[
+                    { id: "content", label: "Notes", icon: FileText },
+                    { id: "resources", label: "Resources", icon: Files },
+                    { id: "quiz", label: "Assessment", icon: Target, hide: !quiz }
+                  ].filter(t => !t.hide).map((tab) => (
+                    <button 
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id as any)}
+                      className={cn(
+                        "flex items-center gap-2.5 px-8 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all shrink-0",
+                        activeTab === tab.id 
+                          ? "bg-background text-foreground shadow-sm border border-border/40" 
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <tab.icon className="w-4 h-4" />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="min-h-[400px]">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeTab}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
                   >
-                    Next Lesson
-                    <ChevronRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </Button>
+                    {activeTab === "content" && (
+                      <div className="prose prose-zinc dark:prose-invert prose-xl max-w-none text-muted-foreground leading-relaxed font-medium">
+                        {activeLesson?.notes ? (
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {activeLesson.notes}
+                          </ReactMarkdown>
+                        ) : (
+                          <div className="space-y-6">
+                            <p>
+                              {activeLesson?.description || "In this lesson, we will explore the professional methodologies behind " + activeLesson?.title + ". Analyze the provided curriculum below and implement these patterns in your next project."}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {activeTab === "resources" && (
+                      <div className="grid gap-6 sm:grid-cols-2">
+                        {resourcesLoading ? (
+                          [1, 2].map(i => <div key={i} className="h-28 bg-muted rounded-4xl animate-pulse" />)
+                        ) : resources.length > 0 ? (
+                          resources.map((resource) => (
+                            <Card key={resource.id} className="p-8 bg-surface border-border/40 hover:border-accent/40 group cursor-pointer transition-all rounded-4xl shadow-sm">
+                              <div className="flex items-center gap-6">
+                                <div className="h-16 w-16 rounded-2xl bg-accent/10 flex items-center justify-center text-accent group-hover:bg-accent group-hover:text-white transition-all duration-700 shadow-sm shrink-0">
+                                  <Files className="w-7 h-7" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-base font-bold text-foreground truncate tracking-tight">{resource.title}</p>
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1 opacity-60">
+                                    {resource.type} • ASSET
+                                  </p>
+                                </div>
+                              </div>
+                            </Card>
+                          ))
+                        ) : (
+                          <div className="col-span-full py-28 text-center border-2 border-dashed border-border/40 rounded-[3rem] bg-muted/20">
+                            <Files className="w-16 h-16 mx-auto mb-6 text-muted-foreground/20" />
+                            <p className="text-[11px] font-bold text-muted-foreground/40 uppercase tracking-[0.4em]">Zero Assets detected</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {activeTab === "quiz" && quiz && (
+                      <div className="space-y-16">
+                         {quizResult ? (
+                           <Card className="text-center py-24 space-y-12 bg-surface border-border/40 rounded-[3rem] shadow-2xl relative overflow-hidden px-6">
+                              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_100%,rgba(37,99,235,0.05),transparent_50%)]" />
+                              <div className={cn(
+                                "relative z-10 mx-auto h-28 w-28 rounded-4xl flex items-center justify-center shadow-2xl transition-transform duration-700 animate-in fade-in zoom-in",
+                                quizResult.passed ? "bg-emerald-500 text-white" : "bg-destructive text-white"
+                              )}>
+                                 {quizResult.passed ? <TrophyIcon className="w-14 h-14" /> : <BrainCircuit className="w-14 h-14" />}
+                              </div>
+                              <div className="relative z-10 space-y-3">
+                                 <h4 className="text-5xl font-bold text-foreground tracking-tighter leading-none">{quizResult.passed ? "Assessment Passed" : "Refinement Needed"}</h4>
+                                 <p className="text-muted-foreground font-bold uppercase tracking-[0.3em] text-[12px]">Accuracy: <span className={cn("px-2 py-0.5 rounded", quizResult.passed ? "bg-emerald-500/10 text-emerald-500" : "bg-destructive/10 text-destructive")}>{quizResult.score}%</span></p>
+                              </div>
+                              <Button 
+                                variant="outline" 
+                                onClick={() => { setQuizResult(null); setQuizAnswers([]); }} 
+                                className="relative z-10 rounded-2xl px-12 h-16 font-bold uppercase tracking-widest text-[11px] border-border/40 hover:bg-muted w-full sm:w-auto"
+                              >
+                                 Retry Evaluation Flow
+                              </Button>
+                           </Card>
+                         ) : (
+                           <div className="space-y-20">
+                             {quiz.questions.map((q, qIdx) => (
+                               <div key={q.id} className="space-y-10">
+                                  <div className="flex gap-8 items-start">
+                                     <span className="shrink-0 h-12 w-12 rounded-2xl bg-surface border border-border/40 text-foreground flex items-center justify-center text-sm font-bold shadow-sm">
+                                        {String(qIdx + 1).padStart(2, '0')}
+                                     </span>
+                                     <h5 className="text-3xl font-bold text-foreground leading-tight tracking-tight text-balance">{q.text}</h5>
+                                  </div>
+                                  <div className="grid gap-5 pl-0 sm:pl-20">
+                                     {q.options.map((opt, oIdx) => (
+                                       <button
+                                         key={oIdx}
+                                         onClick={() => {
+                                           const newAns = [...quizAnswers];
+                                           newAns[qIdx] = oIdx;
+                                           setQuizAnswers(newAns);
+                                         }}
+                                         className={cn(
+                                           "w-full text-left p-8 rounded-4xl border transition-all duration-500 font-bold group",
+                                           quizAnswers[qIdx] === oIdx 
+                                             ? "bg-foreground text-background border-foreground shadow-2xl scale-[1.01]" 
+                                             : "bg-surface border-border/40 text-muted-foreground hover:border-foreground/20 hover:text-foreground"
+                                         )}
+                                       >
+                                         <div className="flex items-center gap-6">
+                                           <div className={cn(
+                                             "h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0",
+                                             quizAnswers[qIdx] === oIdx ? "border-background bg-background" : "border-border group-hover:border-foreground/20"
+                                           )}>
+                                             {quizAnswers[qIdx] === oIdx && <div className="h-2 w-2 rounded-full bg-foreground" />}
+                                           </div>
+                                           <span className="text-lg leading-snug">{opt}</span>
+                                         </div>
+                                       </button>
+                                     ))}
+                                  </div>
+                               </div>
+                             ))}
+                             <Button 
+                               className="w-full h-20 rounded-4xl text-[12px] font-bold uppercase tracking-[0.4em] shadow-2xl shadow-accent/20"
+                               disabled={quizAnswers.length < quiz.questions.length || quizAnswers.includes(undefined as any)}
+                               onClick={handleQuizSubmit}
+                             >
+                                 Finalize Evaluation
+                             </Button>
+                           </div>
+                         )}
+                      </div>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
               </div>
             </div>
           </div>
+
+
         </main>
 
-        {/* Completion Celebration Overlay */}
-        {showCompletionModal && course && user && (
-          <CourseCompletionModal 
-            courseTitle={course.title} 
-            courseId={course.id}
-            userId={user.uid}
-            onClose={() => setShowCompletionModal(false)} 
-          />
-        )}
-
-        {/* Right Sidebar Playlist */}
         <aside 
           ref={sidebarRef}
-          className={`absolute right-0 top-0 bottom-0 z-20 w-full md:w-[450px] border-l border-border bg-card/95 backdrop-blur-2xl shadow-2xl transition-all duration-700 ease-in-out transform ${
-            isSidebarOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"
-          }`}
+          className={cn(
+            "fixed lg:absolute right-0 top-0 bottom-0 z-60 lg:z-30 w-full sm:w-[420px] lg:w-[420px] border-l border-border/40 bg-background shadow-2xl transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]",
+            isSidebarOpen ? "translate-x-0" : "translate-x-full"
+          )}
         >
           <div className="flex h-full flex-col">
-            <div className="p-10 border-b border-border bg-secondary/30">
-              <h3 className="text-2xl font-black text-foreground tracking-tight flex items-center gap-3">
-                <Sparkles className="w-6 h-6 text-primary" />
-                Curriculum
-              </h3>
-              <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] mt-2">
-                {lessons.length} High-Fidelity Modules
-              </p>
+            <div className="p-10 border-b border-border/40 space-y-4">
+              <div className="flex items-center justify-between">
+                 <h3 className="text-3xl font-bold text-foreground tracking-tighter">Curriculum</h3>
+                 <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-muted-foreground hover:text-foreground bg-muted/40 rounded-xl border border-border/40">
+                    <X className="w-6 h-6" />
+                 </button>
+              </div>
+              <div className="flex items-center justify-between">
+                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.3em]">
+                   {lessons.length} Modules total
+                 </p>
+                 <Badge className="bg-muted text-muted-foreground border-none font-bold text-[9px] px-2">{completedLessonIds.length} / {lessons.length}</Badge>
+              </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-3 scrollbar-hide">
+            <div className="flex-1 overflow-y-auto p-5 space-y-3 scrollbar-hide">
               {lessons.map((lesson, index) => {
                 const isActive = activeLesson?.id === lesson.id;
                 const isCompleted = completedLessonIds.includes(lesson.id);
@@ -582,59 +537,96 @@ function LearnViewerContent() {
                       setActiveLesson(lesson);
                       if (window.innerWidth < 1024) setIsSidebarOpen(false);
                     }}
-                    className={`group relative flex w-full items-center gap-4 rounded-xl p-4 text-left transition-all duration-300 border ${
+                    className={cn(
+                      "group relative flex w-full items-center gap-5 rounded-4xl p-5 text-left transition-all duration-500 border",
                       isActive 
-                        ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/10" 
-                        : "bg-transparent border-transparent hover:bg-secondary hover:border-border"
-                    }`}
+                        ? "bg-foreground text-background border-foreground shadow-xl scale-[1.02]" 
+                        : "bg-transparent border-transparent hover:bg-muted/40 hover:border-border/40"
+                    )}
                   >
-                    <div className={`shrink-0 flex h-10 w-10 items-center justify-center rounded-lg border transition-all duration-300 ${
+                    <div className={cn(
+                      "shrink-0 flex h-12 w-12 items-center justify-center rounded-2xl border transition-all duration-500 shadow-sm",
                       isActive 
-                        ? "bg-white/20 border-white/10 text-white" 
+                        ? "bg-background text-foreground border-border/40" 
                         : isCompleted 
-                          ? "bg-success/10 text-success border-success/10" 
-                          : "bg-secondary text-muted-foreground border-border group-hover:bg-card"
-                    }`}>
-                      {isCompleted ? <CheckCircle2 className="h-5 w-5" /> : isActive ? <PlayCircle className="h-5 w-5" /> : <span className="text-[10px] font-bold">{index + 1}</span>}
+                          ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/10" 
+                          : "bg-muted text-muted-foreground border-border/40"
+                    )}>
+                      {isCompleted ? <CheckCircle2 className="h-6 w-6" /> : isActive ? <PlayCircle className="h-6 w-6" /> : <span className="text-xs font-bold">{String(index + 1).padStart(2, '0')}</span>}
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-bold truncate ${isActive ? "text-white" : "text-foreground"}`}>
+                      <p className={cn("text-sm font-bold truncate tracking-tight leading-none", isActive ? "text-background" : "text-foreground")}>
                         {lesson.title}
                       </p>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className={`flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider ${isActive ? "text-white/60" : "text-muted-foreground"}`}>
-                          <Clock className="w-3 h-3" />
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className={cn("flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest", isActive ? "text-background/60" : "text-muted-foreground")}>
+                          <Clock className="w-3.5 h-3.5" />
                           {lesson.duration}
                         </span>
                       </div>
                     </div>
-                    
-                    {isActive && (
-                      <div className="h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_8px_white]" />
-                    )}
                   </button>
                 );
               })}
             </div>
+            
+            {/* Primary Actions - Relocated for better visibility */}
+            <div className="p-10 border-t border-border/40 space-y-4 bg-muted/5">
+              {!completedLessonIds.includes(activeLesson?.id || "") ? (
+                <Button 
+                  onClick={handleMarkComplete} 
+                  disabled={marking} 
+                  className="w-full h-16 rounded-2xl font-bold uppercase tracking-[0.2em] text-[10px] shadow-2xl shadow-accent/40 group px-6 bg-premium-gradient border-none text-white"
+                >
+                  {marking ? "Processing..." : "Mark mastery complete"}
+                  <CheckCircle2 className="ml-3 w-5 h-5 group-hover:rotate-12 transition-transform" />
+                </Button>
+              ) : (
+                <div className="w-full flex items-center justify-center gap-3 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 font-bold text-[10px] uppercase tracking-widest">
+                  <CheckCircle2 className="w-5 h-5" /> Mastery Confirmed
+                </div>
+              )}
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  const currentIndex = lessons.findIndex(l => l.id === activeLesson?.id);
+                  if (currentIndex < lessons.length - 1) setActiveLesson(lessons[currentIndex + 1]);
+                }} 
+                disabled={lessons.indexOf(activeLesson!) === lessons.length - 1} 
+                className="w-full h-16 rounded-2xl font-bold uppercase tracking-[0.2em] text-[10px] bg-muted/40 border-border/40 text-foreground hover:bg-muted group px-6"
+              >
+                Next Module <ChevronRight className="ml-3 w-5 h-5 transition-transform group-hover:translate-x-1" />
+              </Button>
+            </div>
 
-            <div className="p-8 border-t border-border bg-secondary/20">
-               <div className="flex items-center justify-center gap-4 text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">
-                 <div className="h-px w-12 bg-border" />
-                 VEROX ACADEMY
-                 <div className="h-px w-12 bg-border" />
+            <div className="p-10 border-t border-border/40 flex items-center justify-between mt-auto">
+               <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground/40">Secure Stream</p>
+               <div className="flex gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-accent animate-pulse" />
+                  <div className="h-1.5 w-1.5 rounded-full bg-muted" />
+                  <div className="h-1.5 w-1.5 rounded-full bg-muted" />
                </div>
             </div>
           </div>
         </aside>
       </div>
+
+      {showCompletionModal && course && user && (
+        <CourseCompletionModal 
+          courseTitle={course.title} 
+          courseId={course.id}
+          userId={user.uid}
+          onClose={() => setShowCompletionModal(false)} 
+        />
+      )}
     </div>
   );
 }
 
 export default function LearnClient() {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-background text-white">Loading...</div>}>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-background text-foreground font-bold text-[12px] uppercase tracking-[0.6em]">Initializing Mastery Environment...</div>}>
       <LearnViewerContent />
     </Suspense>
   );

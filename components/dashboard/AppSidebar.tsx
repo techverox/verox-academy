@@ -19,11 +19,11 @@ import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
 const menuItems = [
-  { name: "Dashboard", href: "/dashboard/", icon: LayoutDashboard },
-  { name: "My Courses", href: "/courses/", icon: BookOpen },
-  { name: "Certificates", href: "/certificates/", icon: Trophy },
-  { name: "Wishlist", href: "/wishlist/", icon: Heart },
-  { name: "Settings", href: "/settings/", icon: Settings },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { name: "My Courses", href: "/courses", icon: BookOpen },
+  { name: "Certificates", href: "/dashboard", icon: Trophy },
+  { name: "Wishlist", href: "/dashboard", icon: Heart },
+  { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 export default function AppSidebar() {
@@ -44,7 +44,7 @@ export default function AppSidebar() {
       {/* Logo Section */}
       <div className="h-20 flex items-center px-6 border-b border-border/50">
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-9 h-9 rounded-xl bg-foreground flex items-center justify-center text-background font-black text-xl shadow-lg transition-transform group-hover:scale-105">
+          <div className="w-9 h-9 rounded-xl bg-foreground flex items-center justify-center text-background font-bold text-xl shadow-lg transition-transform group-hover:scale-105">
             V
           </div>
           {!isCollapsed && (
@@ -85,11 +85,11 @@ export default function AppSidebar() {
           {(profile?.role === 'creator' || profile?.role === 'admin') && (
             <Link
               href="/creator"
-              className="mt-8 flex items-center gap-3 px-4 py-3.5 rounded-xl bg-gradient-to-r from-primary/20 to-primary/5 border border-primary/20 text-primary hover:from-primary/30 hover:to-primary/10 transition-all group shadow-sm hover:shadow-md"
+              className="mt-8 flex items-center gap-3 px-4 py-3.5 rounded-xl bg-linear-to-r from-primary/20 to-primary/5 border border-primary/20 text-primary hover:from-primary/30 hover:to-primary/10 transition-all group shadow-sm hover:shadow-md"
             >
               <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
               {!isCollapsed && (
-                <span className="font-black text-sm uppercase tracking-wider">CREATOR STUDIO</span>
+                <span className="font-bold text-sm uppercase tracking-wider">CREATOR STUDIO</span>
               )}
             </Link>
           )}
@@ -97,14 +97,14 @@ export default function AppSidebar() {
 
         {/* Upgrade Card (Only if not collapsed) */}
         {!isCollapsed && (
-          <div className="mt-12 p-6 rounded-3xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 relative overflow-hidden group shadow-sm">
+          <div className="mt-12 p-6 rounded-3xl bg-linear-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 relative overflow-hidden group shadow-sm">
             <div className="absolute -right-4 -top-4 w-24 h-24 bg-primary/20 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
             <Sparkles className="w-6 h-6 text-primary mb-4" />
             <h4 className="text-base font-bold text-foreground mb-2">Go Premium</h4>
             <p className="text-xs text-muted-foreground leading-relaxed mb-6 font-medium">
               Unlock exclusive courses, certificates, and premium mentoring today.
             </p>
-            <button className="w-full py-3 bg-primary text-primary-foreground text-xs font-black uppercase tracking-widest rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all">
+            <button className="w-full py-3 bg-primary text-primary-foreground text-xs font-bold uppercase tracking-widest rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all">
               Upgrade Now
             </button>
           </div>

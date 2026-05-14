@@ -52,10 +52,15 @@ function EditCourseForm({ basePath }: { basePath: string }) {
     if (!courseId) return;
     
     setSaving(true);
+    const price = Number(formData.price) || 0;
+    if (price > 500000) {
+      return alert("Maximum price allowed is ₹5,00,000");
+    }
+
     try {
       await adminUpdateCourse(courseId, {
         ...formData,
-        price: Number(formData.price) || 0,
+        price,
       });
       router.push(basePath);
     } catch (error) {
@@ -78,13 +83,13 @@ function EditCourseForm({ basePath }: { basePath: string }) {
     <div className="max-w-6xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-8">
         <div>
-          <Link href={basePath} className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-all flex items-center gap-2 group">
+          <Link href={basePath} className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground hover:text-primary transition-all flex items-center gap-2 group">
             <div className="p-2 rounded-lg bg-secondary group-hover:bg-primary/10 transition-colors">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="group-hover:-translate-x-1 transition-transform"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
             </div>
             Registry Inventory
           </Link>
-          <h2 className="mt-8 text-5xl font-black tracking-tight text-foreground md:text-6xl leading-[1.1]">Refine <span className="text-primary">Masterclass.</span></h2>
+          <h2 className="mt-8 text-5xl font-bold tracking-tight text-foreground md:text-6xl leading-[1.1]">Refine <span className="text-primary">Masterclass.</span></h2>
           <p className="mt-4 text-muted-foreground font-medium text-lg">Modify the core architectural parameters of this educational asset.</p>
         </div>
       </header>
@@ -93,11 +98,11 @@ function EditCourseForm({ basePath }: { basePath: string }) {
         <div className="grid gap-10 md:grid-cols-2">
           {/* Title */}
           <div className="space-y-4">
-            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground ml-2">Registry Designation</label>
+            <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground ml-2">Registry Designation</label>
             <input
               type="text"
               required
-              className="w-full rounded-[1.5rem] border border-border bg-secondary/30 px-8 py-5 text-xl font-black text-foreground outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all placeholder:text-muted-foreground/30"
+              className="w-full rounded-[1.5rem] border border-border bg-secondary/30 px-8 py-5 text-xl font-bold text-foreground outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all placeholder:text-muted-foreground/30"
               value={formData.title}
               onChange={e => setFormData({ ...formData, title: e.target.value })}
             />
@@ -105,15 +110,20 @@ function EditCourseForm({ basePath }: { basePath: string }) {
 
           {/* Price */}
           <div className="space-y-4">
-            <label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground ml-2">Market Valuation (INR)</label>
+            <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground ml-2">Market Valuation (INR)</label>
             <div className="relative">
-              <span className="absolute left-8 top-1/2 -translate-y-1/2 font-black text-muted-foreground/30 text-xl">₹</span>
+              <span className="absolute left-8 top-1/2 -translate-y-1/2 font-bold text-muted-foreground/30 text-xl">₹</span>
               <input
                 type="number"
                 required
-                className="w-full rounded-[1.5rem] border border-border bg-secondary/30 pl-14 pr-8 py-5 text-xl font-black text-foreground outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all"
+                max="500000"
+                className="w-full rounded-[1.5rem] border border-border bg-secondary/30 pl-14 pr-8 py-5 text-xl font-bold text-foreground outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all"
                 value={formData.price}
-                onChange={e => setFormData({ ...formData, price: e.target.value })}
+                onChange={e => {
+                  const val = Number(e.target.value);
+                  if (val > 500000) return;
+                  setFormData({ ...formData, price: e.target.value });
+                }}
               />
             </div>
           </div>
@@ -121,7 +131,7 @@ function EditCourseForm({ basePath }: { basePath: string }) {
 
         {/* Description */}
         <div className="space-y-4">
-          <label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground ml-2">Executive Summary</label>
+          <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground ml-2">Executive Summary</label>
           <textarea
             rows={5}
             required
@@ -133,11 +143,11 @@ function EditCourseForm({ basePath }: { basePath: string }) {
 
         {/* Thumbnail URL */}
         <div className="space-y-4">
-          <label className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground ml-2">Identity Blueprint (URL)</label>
+          <label className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground ml-2">Identity Blueprint (URL)</label>
           <input
             type="url"
             required
-            className="w-full rounded-[1.5rem] border border-border bg-secondary/30 px-8 py-5 font-black text-foreground outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all text-sm"
+            className="w-full rounded-[1.5rem] border border-border bg-secondary/30 px-8 py-5 font-bold text-foreground outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all text-sm"
             value={formData.thumbnail}
             onChange={e => setFormData({ ...formData, thumbnail: e.target.value })}
           />
@@ -157,7 +167,7 @@ function EditCourseForm({ basePath }: { basePath: string }) {
             }`} />
           </button>
           <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground">Global Availability</span>
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-foreground">Global Availability</span>
             <span className="text-[10px] font-medium text-muted-foreground">{formData.published ? "Visible in registry catalog" : "Restricted to administrative vault"}</span>
           </div>
         </div>
@@ -166,13 +176,13 @@ function EditCourseForm({ basePath }: { basePath: string }) {
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 h-20 rounded-[1.5rem] bg-foreground text-background text-[10px] font-black uppercase tracking-widest shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+            className="flex-1 h-20 rounded-[1.5rem] bg-foreground text-background text-[10px] font-bold uppercase tracking-widest shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
           >
             {saving ? "Synchronizing..." : "Update Blueprint"}
           </button>
           <Link
             href={`${basePath}/curriculum?id=${courseId}`}
-            className="flex-1 h-20 flex items-center justify-center rounded-[1.5rem] border border-border bg-secondary/50 text-[10px] font-black uppercase tracking-widest shadow-sm transition-all hover:bg-secondary"
+            className="flex-1 h-20 flex items-center justify-center rounded-[1.5rem] border border-border bg-secondary/50 text-[10px] font-bold uppercase tracking-widest shadow-sm transition-all hover:bg-secondary"
           >
             Engineer Curriculum
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="ml-3"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
@@ -185,7 +195,7 @@ function EditCourseForm({ basePath }: { basePath: string }) {
 
 export default function CourseEditor({ basePath = "/admin/courses" }: { basePath?: string }) {
   return (
-    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-background text-foreground font-black uppercase tracking-[0.5em] animate-pulse">Initializing Blueprint Editor...</div>}>
+    <Suspense fallback={<div className="flex h-screen items-center justify-center bg-background text-foreground font-bold uppercase tracking-[0.5em] animate-pulse">Initializing Blueprint Editor...</div>}>
       <EditCourseForm basePath={basePath} />
     </Suspense>
   );

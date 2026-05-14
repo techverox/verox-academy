@@ -14,10 +14,10 @@ export function StatsCard({ title, value, icon: Icon, trend, trendType = "positi
     <Card className="p-6 group hover:border-primary/30 transition-all duration-300 shadow-sm hover:shadow-md bg-card">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
             {title}
           </p>
-          <p className="text-3xl font-black text-foreground">{value}</p>
+          <p className="text-3xl font-bold text-foreground">{value}</p>
         </div>
         <div className="h-12 w-12 rounded-2xl bg-secondary/50 border border-border flex items-center justify-center text-primary group-hover:scale-110 group-hover:bg-primary/10 transition-all shadow-sm">
           <Icon className="h-6 w-6" />

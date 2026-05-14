@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing application ID" }, { status: 400 });
     }
 
-    await deleteCreatorApplicationServer(applicationId, adminToken.uid);
+    await deleteCreatorApplicationServer(applicationId);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("[API] Failed to delete creator application:", error);

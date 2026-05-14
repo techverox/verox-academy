@@ -45,7 +45,7 @@ export default function BlogPage() {
             <Hash className="w-4 h-4" />
             Knowledge Base
           </motion.div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-8 uppercase">
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-8 uppercase">
             VEROX <span className="text-primary italic">INSIGHTS</span>
           </h1>
           <p className="text-zinc-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">

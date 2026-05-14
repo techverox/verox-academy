@@ -42,7 +42,7 @@ export default function WistiaPlayer({ mediaId, title, onComplete }: WistiaPlaye
   return (
     <div className="group relative w-full overflow-hidden bg-black shadow-[0_0_50px_-12px_rgba(0,0,0,0.5)] transition-all duration-700 md:rounded-3xl border border-white/5">
       {/* Cinematic Glow Effect */}
-      <div className="absolute -inset-1 bg-gradient-to-r from-zinc-800 via-zinc-400 to-zinc-800 opacity-0 blur-2xl transition-opacity duration-1000 group-hover:opacity-10" />
+      <div className="absolute -inset-1 bg-linear-to-r from-zinc-800 via-zinc-400 to-zinc-800 opacity-0 blur-2xl transition-opacity duration-1000 group-hover:opacity-10" />
       
       {/* Premium Loading Skeleton */}
       {!isLoaded && (
@@ -52,7 +52,7 @@ export default function WistiaPlayer({ mediaId, title, onComplete }: WistiaPlaye
             <div className="absolute inset-4 animate-spin rounded-full border-2 border-zinc-800 border-t-white" />
           </div>
           <div className="mt-8 flex flex-col items-center gap-2">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-500">Verox Cinema Engine</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-zinc-500">Verox Cinema Engine</p>
             <div className="h-1 w-32 overflow-hidden rounded-full bg-zinc-900">
               <div className="h-full w-1/3 animate-[loading_2s_infinite] bg-white shadow-[0_0_10px_white]" />
             </div>
@@ -69,6 +69,7 @@ export default function WistiaPlayer({ mediaId, title, onComplete }: WistiaPlaye
             allow="autoplay; fullscreen" 
             allowFullScreen
             onLoad={() => setIsLoaded(true)}
+            loading="lazy"
             className="wistia_embed border-0" 
             name="wistia_embed" 
             width="100%" 

@@ -60,7 +60,7 @@ export const EnrollStudentModal = ({ isOpen, onClose, courseId, courseTitle }: E
       
       <div className="relative w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
         {/* Header */}
-        <div className="p-8 border-b border-zinc-800 bg-gradient-to-br from-primary/5 to-transparent">
+        <div className="p-8 border-b border-zinc-800 bg-linear-to-br from-primary/5 to-transparent">
           <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
               <ShieldCheck className="w-6 h-6" />
@@ -72,7 +72,7 @@ export const EnrollStudentModal = ({ isOpen, onClose, courseId, courseTitle }: E
               <X className="w-5 h-5" />
             </button>
           </div>
-          <h2 className="text-2xl font-black tracking-tight text-white">Grant Free Access</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-white">Grant Free Access</h2>
           <p className="text-zinc-500 text-sm font-medium mt-1">Enroll a student manually into your course.</p>
         </div>
 
@@ -84,7 +84,7 @@ export const EnrollStudentModal = ({ isOpen, onClose, courseId, courseTitle }: E
                 <BookOpen className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500 leading-none mb-1">Selected Course</p>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 leading-none mb-1">Selected Course</p>
                 <p className="text-sm font-bold text-white truncate leading-none">{courseTitle}</p>
               </div>
             </div>
@@ -92,7 +92,7 @@ export const EnrollStudentModal = ({ isOpen, onClose, courseId, courseTitle }: E
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-xs font-black uppercase tracking-widest text-zinc-500 ml-1">Student's Email Address</label>
+              <label className="text-xs font-bold uppercase tracking-widest text-zinc-500 ml-1">Student's Email Address</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
                 <input 
@@ -117,7 +117,7 @@ export const EnrollStudentModal = ({ isOpen, onClose, courseId, courseTitle }: E
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-primary text-black font-black rounded-2xl hover:scale-[1.02] transition-transform active:scale-95 shadow-[0_0_40px_-10px_rgba(var(--primary-rgb),0.5)] flex items-center justify-center gap-2 disabled:opacity-50 disabled:scale-100"
+              className="w-full py-4 bg-primary text-black font-bold rounded-2xl hover:scale-[1.02] transition-transform active:scale-95 shadow-[0_0_40px_-10px_rgba(var(--primary-rgb),0.5)] flex items-center justify-center gap-2 disabled:opacity-50 disabled:scale-100"
             >
               {loading ? (
                 <>

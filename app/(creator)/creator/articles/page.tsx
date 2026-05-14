@@ -13,7 +13,8 @@ import {
   CheckCircle2, 
   Clock,
   MoreVertical,
-  ExternalLink
+  ExternalLink,
+  Sparkles
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
@@ -69,20 +70,27 @@ export default function CreatorArticlesPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight mb-2 uppercase">My Articles</h1>
-          <p className="text-zinc-500 font-medium">Manage your educational content and grow your authority.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-12">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.4em] text-blue-600">
+            <Sparkles className="w-3.5 h-3.5" />
+            Insights Studio
+          </div>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter text-foreground leading-none">
+            Digital <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-cyan-500">Publications.</span>
+          </h1>
+          <p className="text-base text-muted-foreground font-medium max-w-xl leading-relaxed">
+            Manage your educational articles, track engagement, and build your authority within the Techverox network.
+          </p>
         </div>
         <Link href="/creator/articles/new">
-          <Button className="rounded-full px-8 gap-2">
-            <Plus className="w-5 h-5" />
-            Write Article
+          <Button className="h-16 px-10 rounded-2xl bg-linear-to-r from-blue-600 to-cyan-500 text-white font-bold uppercase tracking-widest text-[11px] shadow-2xl shadow-blue-500/20 group border-none">
+            <Plus className="mr-2 w-5 h-5 transition-transform group-hover:rotate-90" /> Write Article
           </Button>
         </Link>
       </div>
 
-      <div className="bg-zinc-900/30 border border-zinc-800 rounded-[2.5rem] overflow-hidden">
+      <div className="bg-zinc-900/30 border border-zinc-800 rounded-4xl overflow-hidden">
         {articles.length === 0 ? (
           <div className="p-20 text-center flex flex-col items-center">
             <div className="w-20 h-20 bg-zinc-800 rounded-full flex items-center justify-center mb-6">
@@ -128,7 +136,7 @@ export default function CreatorArticlesPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <Badge className={`px-4 py-1.5 rounded-full font-black uppercase tracking-widest text-[10px] ${
+                  <Badge className={`px-4 py-1.5 rounded-full font-bold uppercase tracking-widest text-[10px] ${
                     article.published 
                       ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
                       : "bg-zinc-800 text-zinc-500 border-zinc-700"

@@ -3,7 +3,7 @@ export default function CourseSkeleton() {
     <div className="group flex flex-col overflow-hidden rounded-[2rem] border border-zinc-100 bg-white shadow-sm dark:border-zinc-900 dark:bg-zinc-950/50">
       {/* Thumbnail Skeleton */}
       <div className="relative aspect-video w-full overflow-hidden bg-zinc-50 dark:bg-zinc-900/50 animate-pulse">
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent skew-x-12 animate-[shimmer_2s_infinite]" />
+        <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/5 to-transparent skew-x-12 animate-[shimmer_2s_infinite]" />
       </div>
       
       {/* Content Skeleton */}

@@ -3,8 +3,34 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { CreatorApplication } from "@/types/firestore";
-import { Check, X, Eye, Clock, ShieldCheck, AlertCircle, Search, Filter, Trash2, HelpCircle } from "lucide-react";
+import { 
+  Check, 
+  X, 
+  Eye, 
+  Clock, 
+  ShieldCheck, 
+  AlertCircle, 
+  Search, 
+  Filter, 
+  Trash2, 
+  HelpCircle,
+  Sparkles,
+  ChevronRight,
+  MoreVertical,
+  ArrowLeft,
+  Mail,
+  User,
+  ExternalLink,
+  X as Twitter,
+  Link2 as Linkedin,
+  Award
+} from "lucide-react";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminCreatorsPage() {
   const { user, isAdmin, loading: authLoading, refreshClaims } = useAuth();
@@ -13,7 +39,6 @@ export default function AdminCreatorsPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
-
   const [selectedApp, setSelectedApp] = useState<CreatorApplication | null>(null);
 
   // Modal State
@@ -155,376 +180,429 @@ export default function AdminCreatorsPage() {
     }
   };
 
-  if (authLoading) return <div className="p-8 text-muted-foreground animate-pulse">Checking credentials...</div>;
+  if (authLoading) return (
+    <div className="flex h-screen items-center justify-center bg-background text-foreground font-bold text-[10px] uppercase tracking-[0.5em] animate-pulse">
+       Authorizing Access...
+    </div>
+  );
 
   if (!isAdmin) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-center bg-card rounded-5xl border border-destructive/20 shadow-sm">
-        <div className="w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center text-destructive mb-6 shadow-inner">
-          <AlertCircle className="w-8 h-8" />
+      <div className="flex flex-col items-center justify-center py-32 text-center bg-surface rounded-6xl border border-destructive/20 shadow-sm mx-6">
+        <div className="w-20 h-20 rounded-4xl bg-destructive/10 flex items-center justify-center text-destructive mb-8 shadow-inner">
+          <AlertCircle className="w-10 h-10" />
         </div>
-        <h1 className="text-2xl font-black mb-2 text-foreground">Access Denied</h1>
-        <p className="text-muted-foreground max-w-md mb-8">
-          You do not have the required administrative privileges to view this page. 
-          If you were recently granted admin rights, try refreshing your session.
+        <h1 className="text-3xl font-bold mb-3 text-foreground tracking-tighter">Access Denied.</h1>
+        <p className="text-muted-foreground max-w-sm mb-10 font-medium">
+          Administrative privileges are required for this section.
         </p>
-        <button 
+        <Button 
           onClick={async () => {
             await refreshClaims();
             window.location.reload();
           }}
-          className="btn-primary-premium h-14"
+          className="h-14 px-10 rounded-2xl font-bold uppercase tracking-widest text-[11px]"
         >
           REFRESH PERMISSIONS
-        </button>
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight text-foreground">Creator Management</h1>
-          <p className="text-muted-foreground font-medium mt-1">Review and manage creator applications.</p>
+    <div className="space-y-16 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      {/* Moderation Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.4em] text-blue-600">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Vetting System
+          </div>
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tighter text-foreground leading-none">
+            Creator <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-cyan-500">Moderation.</span>
+          </h1>
+          <p className="text-base text-muted-foreground font-medium max-w-xl leading-relaxed">
+            Review and authorize new creator applications. Audit strategic intent and ensure all applicants meet Techverox ecosystem standards.
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        
+        <div className="flex items-center gap-4">
+          <div className="relative group">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-muted-foreground/40 group-focus-within:text-accent transition-colors" />
             <input 
               type="text" 
               placeholder="Search applications..." 
-              className="pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all text-foreground placeholder:text-muted-foreground shadow-sm focus:border-primary"
+              className="h-14 pl-14 pr-8 bg-surface border border-border/40 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-accent/5 transition-all text-foreground placeholder:text-muted-foreground/40 w-full md:w-80"
             />
           </div>
-          <button className="p-2.5 bg-background border border-border rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors shadow-sm hover:border-primary/50">
+          <Button variant="outline" size="icon" className="h-14 w-14 rounded-2xl border-border/40 hover:border-accent/40">
             <Filter className="w-5 h-5" />
-          </button>
+          </Button>
         </div>
       </div>
 
-      {/* Stats Overview */}
+      {/* Application Analytics Cluster */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-card border border-border p-6 rounded-4xl shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
-              <Clock className="w-5 h-5" />
-            </div>
-            <h3 className="font-bold text-muted-foreground text-[10px] uppercase tracking-[0.2em]">Pending</h3>
-          </div>
-          <p className="text-4xl font-black text-foreground">
-            {applications.filter(a => a.status === "pending").length}
-          </p>
-        </div>
-        <div className="bg-card border border-border p-6 rounded-4xl shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <h3 className="font-bold text-muted-foreground text-[10px] uppercase tracking-[0.2em]">Approved</h3>
-          </div>
-          <p className="text-4xl font-black text-foreground">
-            {applications.filter(a => a.status === "approved").length}
-          </p>
-        </div>
-        <div className="bg-card border border-border p-6 rounded-4xl shadow-sm hover:shadow-md transition-all hover:-translate-y-1">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center text-destructive">
-              <AlertCircle className="w-5 h-5" />
-            </div>
-            <h3 className="font-bold text-muted-foreground text-[10px] uppercase tracking-[0.2em]">Rejected</h3>
-          </div>
-          <p className="text-4xl font-black text-foreground">
-            {applications.filter(a => a.status === "rejected").length}
-          </p>
-        </div>
+        {[
+          { label: "Pending Review", count: applications.filter(a => a.status === "pending").length, icon: Clock, color: "text-amber-500", bg: "bg-amber-500/10" },
+          { label: "Approved Creators", count: applications.filter(a => a.status === "approved").length, icon: ShieldCheck, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+          { label: "Rejected Access", count: applications.filter(a => a.status === "rejected").length, icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10" },
+        ].map((card, i) => (
+          <motion.div
+            key={card.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+          >
+            <Card className="p-10 rounded-5xl border border-border/40 bg-surface flex items-center justify-between group hover:border-accent/40 transition-all duration-500 relative overflow-hidden shadow-sm">
+              <div className="space-y-1 relative z-10">
+                <p className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-[0.3em]">{card.label}</p>
+                <h3 className="text-5xl font-bold text-foreground tracking-tighter">{card.count}</h3>
+              </div>
+              <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-700 group-hover:scale-110 group-hover:rotate-6 relative z-10", card.bg)}>
+                <card.icon className={cn("w-7 h-7", card.color)} />
+              </div>
+              <div className="absolute -bottom-6 -right-6 w-24 h-24 opacity-[0.02] group-hover:opacity-[0.06] transition-opacity duration-700">
+                 <card.icon className="w-full h-full" />
+              </div>
+            </Card>
+          </motion.div>
+        ))}
       </div>
 
-      {/* Applications Table */}
-      <div className="bg-card border border-border rounded-4xl overflow-hidden shadow-sm">
+      {/* High-Density Moderation Registry */}
+      <Card className="rounded-6xl border border-border/40 bg-surface overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-border bg-secondary/50">
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Creator</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Category</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Status</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right">Actions</th>
+              <tr className="border-b border-border/40 bg-muted/5">
+                <th className="px-10 py-6 text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground/60">Creator Applicant</th>
+                <th className="px-10 py-6 text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground/60">Category</th>
+                <th className="px-10 py-6 text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground/60">Status</th>
+                <th className="px-10 py-6 text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground/60 text-right">Moderation Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-border">
+            <tbody className="divide-y divide-border/40">
               {loading ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center">
-                    <div className="flex items-center justify-center gap-3 text-muted-foreground">
-                      <div className="w-5 h-5 border-2 border-muted-foreground/20 border-t-primary rounded-full animate-spin" />
-                      Loading applications...
+                  <td colSpan={4} className="px-10 py-32 text-center">
+                    <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground/40">
+                      <div className="w-10 h-10 border-4 border-muted-foreground/10 border-t-accent rounded-full animate-spin" />
+                      <p className="text-[10px] font-bold uppercase tracking-widest">Scanning Registry...</p>
                     </div>
                   </td>
                 </tr>
               ) : applications.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-muted-foreground font-medium">
-                    No applications found.
+                  <td colSpan={4} className="px-10 py-32 text-center text-muted-foreground/40 font-medium">
+                    <div className="flex flex-col items-center justify-center gap-4">
+                       <Search className="w-12 h-12 opacity-10" />
+                       <p className="text-[10px] font-bold uppercase tracking-widest">No applications detected in registry.</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                applications.map((app) => (
-                  <tr key={app.id} className="group hover:bg-secondary/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-foreground line-clamp-1">{app.fullName}</span>
-                        <span className="text-[10px] font-medium text-muted-foreground mt-0.5">{app.email}</span>
+                applications.map((app, i) => (
+                  <motion.tr 
+                    key={app.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="group hover:bg-muted/10 transition-all duration-300"
+                  >
+                    <td className="px-10 py-8">
+                      <div className="flex items-center gap-5">
+                         <div className="h-12 w-12 rounded-2xl bg-accent/5 border border-accent/10 flex items-center justify-center text-accent font-bold text-sm shadow-inner group-hover:bg-accent/10 transition-all">
+                            {app.fullName.charAt(0)}
+                         </div>
+                         <div className="flex flex-col">
+                            <span className="font-bold text-foreground tracking-tight group-hover:text-accent transition-colors">{app.fullName}</span>
+                            <span className="text-[10px] font-bold text-muted-foreground/40 mt-1 uppercase tracking-widest">{app.email}</span>
+                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 rounded-full bg-background border border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground shadow-sm inline-block">
+                    <td className="px-10 py-8">
+                      <Badge variant="outline" className="px-4 py-1.5 rounded-xl bg-muted/40 text-muted-foreground/60 border-none font-bold text-[9px] uppercase tracking-widest">
                         {app.category}
-                      </span>
+                      </Badge>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full shadow-sm ${
-                          app.status === "pending" ? "bg-blue-500 animate-pulse shadow-blue-500/50" :
+                    <td className="px-10 py-8">
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-2.5 h-2.5 rounded-full shadow-sm",
+                          app.status === "pending" ? "bg-amber-500 animate-pulse shadow-amber-500/50" :
                           app.status === "approved" ? "bg-emerald-500 shadow-emerald-500/50" : "bg-destructive shadow-destructive/50"
-                        }`} />
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${
-                          app.status === "pending" ? "text-blue-500" :
+                        )} />
+                        <span className={cn(
+                          "text-[10px] font-bold uppercase tracking-widest",
+                          app.status === "pending" ? "text-amber-500" :
                           app.status === "approved" ? "text-emerald-500" : "text-destructive"
-                        }`}>
+                        )}>
                           {app.status}
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
+                    <td className="px-10 py-8 text-right">
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
+                        <Button 
+                          variant="outline"
+                          size="icon"
                           onClick={() => setSelectedApp(app)}
-                          className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors rounded-xl"
-                          title="View Details"
+                          className="h-10 w-10 rounded-xl"
                         >
-                          <Eye className="w-5 h-5" />
-                        </button>
+                          <Eye className="w-4.5 h-4.5" />
+                        </Button>
                         
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-2">
                           {app.status !== "approved" && (
-                            <button 
+                            <Button 
+                              variant="ghost"
+                              size="icon"
                               onClick={() => handleApprove(app.id)}
                               disabled={processingId === app.id}
-                              className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all disabled:opacity-50 border border-transparent hover:border-emerald-500/20"
-                              title="Approve"
+                              className="h-10 w-10 rounded-xl text-emerald-500 hover:bg-emerald-500/10 border border-emerald-500/20"
                             >
                               <Check className="w-5 h-5" />
-                            </button>
+                            </Button>
                           )}
                           {app.status !== "rejected" && (
-                            <button 
+                            <Button 
+                              variant="ghost"
+                              size="icon"
                               onClick={() => setShowRejectModal(app.id)}
                               disabled={processingId === app.id}
-                              className="p-2 text-destructive hover:bg-destructive/10 rounded-xl transition-all disabled:opacity-50 border border-transparent hover:border-destructive/20"
-                              title="Reject"
+                              className="h-10 w-10 rounded-xl text-destructive hover:bg-destructive/10 border border-destructive/20"
                             >
                               <X className="w-5 h-5" />
-                            </button>
+                            </Button>
                           )}
-                          <button 
+                          <Button 
+                            variant="ghost"
+                            size="icon"
                             onClick={() => handleDelete(app.id)}
                             disabled={processingId === app.id}
-                            className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all disabled:opacity-50 border border-transparent hover:border-destructive/20"
-                            title="Delete"
+                            className="h-10 w-10 rounded-xl text-muted-foreground/40 hover:text-destructive hover:bg-destructive/5"
                           >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+                            <Trash2 className="w-4.5 h-4.5" />
+                          </Button>
                         </div>
                       </div>
                     </td>
-                  </tr>
+                  </motion.tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
 
-      {/* Application Details Modal */}
-      {selectedApp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-background/80 backdrop-blur-sm overflow-y-auto">
-          <div className="w-full max-w-2xl bg-card border border-border rounded-3xl p-6 sm:p-8 shadow-2xl my-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-black tracking-tight text-foreground">Application Details</h2>
-              <button 
-                onClick={() => setSelectedApp(null)}
-                className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-full hover:bg-secondary"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
+      {/* Application Intelligence Modal */}
+      <AnimatePresence>
+        {selectedApp && (
+          <div className="fixed inset-0 z-100 flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedApp(null)}
+              className="absolute inset-0 bg-black/95 backdrop-blur-2xl"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-4xl bg-surface border border-white/10 rounded-7xl p-12 lg:p-20 shadow-2xl overflow-y-auto max-h-[90vh]"
+            >
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.05),transparent_70%)]" />
+              
+              <div className="relative z-10 space-y-16">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+                   <div className="space-y-4">
+                      <div className="flex items-center gap-3 text-accent font-bold text-[10px] uppercase tracking-[0.4em]">
+                         <Award className="w-6 h-6" />
+                         Application Profile
+                      </div>
+                      <h2 className="text-4xl md:text-5xl font-bold tracking-tighter text-foreground leading-none">{selectedApp.fullName}</h2>
+                      <div className="flex flex-wrap gap-4">
+                         <Badge variant="outline" className="bg-muted/40 text-muted-foreground/60 border-none font-bold text-[9px] tracking-widest px-4 py-2 rounded-xl">
+                            <Mail className="w-3.5 h-3.5 mr-2" /> {selectedApp.email}
+                         </Badge>
+                         <Badge variant="outline" className="bg-muted/40 text-muted-foreground/60 border-none font-bold text-[9px] tracking-widest px-4 py-2 rounded-xl">
+                            {selectedApp.category}
+                         </Badge>
+                         <Badge className={cn(
+                           "border-none font-bold text-[9px] tracking-widest px-4 py-2 rounded-xl",
+                           selectedApp.status === "pending" ? "bg-amber-500 text-white" :
+                           selectedApp.status === "approved" ? "bg-emerald-500 text-white" : "bg-destructive text-white"
+                         )}>
+                             {selectedApp.status.toUpperCase()}
+                         </Badge>
+                      </div>
+                   </div>
+                   <Button onClick={() => setSelectedApp(null)} variant="outline" size="icon" className="h-16 w-16 rounded-4xl border-border/40">
+                      <X className="w-8 h-8" />
+                   </Button>
+                </div>
 
-            <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Applicant Name</label>
-                  <p className="font-bold text-foreground">{selectedApp.fullName}</p>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+                   <div className="lg:col-span-8 space-y-12">
+                      <section className="space-y-4">
+                        <label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground/60 ml-2">Applicant Biography</label>
+                        <div className="p-8 rounded-5xl bg-muted/20 border border-border/40 shadow-inner">
+                          <p className="text-base text-foreground leading-relaxed font-medium">{selectedApp.bio}</p>
+                        </div>
+                      </section>
+
+                      <div className="grid md:grid-cols-2 gap-10">
+                        <section className="space-y-4">
+                          <label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground/60 ml-2">Core Expertise</label>
+                          <div className="p-6 rounded-4xl bg-muted/20 border border-border/40 shadow-inner">
+                            <p className="text-sm text-foreground font-bold leading-relaxed">{selectedApp.expertise}</p>
+                          </div>
+                        </section>
+                        <section className="space-y-4">
+                          <label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground/60 ml-2">Proposed Masterclass</label>
+                          <div className="p-6 rounded-4xl bg-muted/20 border border-border/40 shadow-inner">
+                            <p className="text-sm text-foreground font-bold leading-relaxed">{selectedApp.sampleCourseIdea}</p>
+                          </div>
+                        </section>
+                      </div>
+
+                      <section className="space-y-4">
+                        <label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground/60 ml-2">Strategic Intent</label>
+                        <div className="p-8 rounded-5xl bg-muted/20 border border-border/40 shadow-inner">
+                          <p className="text-sm text-foreground italic leading-relaxed font-medium">"{selectedApp.whyJoin}"</p>
+                        </div>
+                      </section>
+                   </div>
+
+                   <div className="lg:col-span-4 space-y-12">
+                      <section className="space-y-6">
+                        <h4 className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground/60">Digital Presence</h4>
+                        <div className="space-y-4">
+                           <a href={selectedApp.portfolioUrl} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-border/40 hover:border-accent/40 hover:bg-accent/5 transition-all group">
+                              <span className="text-xs font-bold uppercase tracking-widest text-foreground">Portfolio Portfolio</span>
+                              <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-accent" />
+                           </a>
+                           {selectedApp.socialLinks && Object.entries(selectedApp.socialLinks).map(([platform, link]) => link ? (
+                             <a key={platform} href={link as string} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-border/40 hover:border-accent/40 hover:bg-accent/5 transition-all group">
+                                <span className="text-xs font-bold uppercase tracking-widest text-foreground">{platform}</span>
+                                <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-accent" />
+                             </a>
+                           ) : null)}
+                        </div>
+                      </section>
+
+                      {selectedApp.status === "rejected" && selectedApp.rejectionReason && (
+                        <Card className="p-8 rounded-4xl bg-destructive/5 border-destructive/20 space-y-4">
+                           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-destructive">
+                              <AlertCircle className="w-4 h-4" /> Rejection Context
+                           </div>
+                           <p className="text-sm text-destructive leading-relaxed font-bold italic">"{selectedApp.rejectionReason}"</p>
+                        </Card>
+                      )}
+                   </div>
                 </div>
-                <div>
-                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Email Address</label>
-                  <p className="font-medium text-foreground">{selectedApp.email}</p>
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Category</label>
-                  <span className="px-3 py-1 rounded-full bg-background border border-border text-[10px] font-black uppercase tracking-widest text-muted-foreground shadow-sm inline-block">
-                    {selectedApp.category}
-                  </span>
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Status</label>
-                  <span className={`text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border inline-block shadow-sm ${
-                    selectedApp.status === "pending" ? "text-blue-500 bg-blue-500/10 border-blue-500/20" :
-                    selectedApp.status === "approved" ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" : "text-destructive bg-destructive/10 border-destructive/20"
-                  }`}>
-                    {selectedApp.status}
-                  </span>
+
+                <div className="flex flex-wrap gap-6 pt-12 border-t border-border/40">
+                  {selectedApp.status !== "approved" && (
+                    <Button 
+                      onClick={() => handleApprove(selectedApp.id)}
+                      disabled={processingId === selectedApp.id}
+                      className="flex-1 h-16 rounded-2xl font-bold uppercase tracking-[0.2em] text-[11px] bg-emerald-500 text-white hover:bg-emerald-600 shadow-2xl shadow-emerald-500/20"
+                    >
+                      Approve Creator Access
+                    </Button>
+                  )}
+                  {selectedApp.status !== "rejected" && (
+                    <Button 
+                      onClick={() => setShowRejectModal(selectedApp.id)}
+                      disabled={processingId === selectedApp.id}
+                      variant="ghost"
+                      className="flex-1 h-16 rounded-2xl font-bold uppercase tracking-[0.2em] text-[11px] text-destructive hover:bg-destructive/10"
+                    >
+                      Reject Application
+                    </Button>
+                  )}
+                  <Button 
+                    onClick={() => handleDelete(selectedApp.id)}
+                    disabled={processingId === selectedApp.id}
+                    variant="ghost"
+                    className="h-16 w-16 rounded-2xl text-muted-foreground/40 hover:text-destructive hover:bg-destructive/5"
+                  >
+                    <Trash2 className="w-6 h-6" />
+                  </Button>
                 </div>
               </div>
-
-              <div>
-                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-1">Portfolio Link</label>
-                <a href={selectedApp.portfolioUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium break-all">
-                  {selectedApp.portfolioUrl}
-                </a>
-              </div>
-
-              {selectedApp.socialLinks && Object.keys(selectedApp.socialLinks).length > 0 && (
-                <div>
-                  <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">Social Links</label>
-                  <div className="flex flex-wrap gap-4">
-                    {Object.entries(selectedApp.socialLinks).map(([platform, link]) => link ? (
-                      <a key={platform} href={link as string} target="_blank" rel="noopener noreferrer" className="text-sm font-bold capitalize text-muted-foreground hover:text-primary transition-colors bg-secondary px-3 py-1.5 rounded-lg">
-                        {platform}
-                      </a>
-                    ) : null)}
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">Bio / Introduction</label>
-                <div className="p-4 rounded-2xl bg-secondary/50 border border-border shadow-inner">
-                  <p className="text-sm text-foreground leading-relaxed">{selectedApp.bio}</p>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">Expertise</label>
-                <div className="p-4 rounded-2xl bg-secondary/50 border border-border shadow-inner">
-                  <p className="text-sm text-foreground leading-relaxed">{selectedApp.expertise}</p>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">Sample Course Idea</label>
-                <div className="p-4 rounded-2xl bg-secondary/50 border border-border shadow-inner">
-                  <p className="text-sm text-foreground leading-relaxed">{selectedApp.sampleCourseIdea}</p>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest block mb-2">Why Join Verox Academy?</label>
-                <div className="p-4 rounded-2xl bg-secondary/50 border border-border shadow-inner">
-                  <p className="text-sm text-foreground leading-relaxed">{selectedApp.whyJoin}</p>
-                </div>
-              </div>
-
-              {selectedApp.status === "rejected" && selectedApp.rejectionReason && (
-                <div>
-                  <label className="text-[10px] font-black text-destructive uppercase tracking-widest block mb-2">Rejection Reason</label>
-                  <div className="p-4 rounded-2xl bg-destructive/10 border border-destructive/20 shadow-inner">
-                    <p className="text-sm text-destructive leading-relaxed font-medium">{selectedApp.rejectionReason}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-wrap gap-3 mt-8 pt-6 border-t border-border">
-              {selectedApp.status !== "approved" && (
-                <button 
-                  onClick={() => handleApprove(selectedApp.id)}
-                  disabled={processingId === selectedApp.id}
-                  className="flex-1 min-w-[140px] py-4 text-xs font-black uppercase tracking-widest bg-emerald-500 text-white rounded-2xl hover:bg-emerald-600 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
-                >
-                  <Check className="w-4 h-4" />
-                  Approve
-                </button>
-              )}
-              {selectedApp.status !== "rejected" && (
-                <button 
-                  onClick={() => setShowRejectModal(selectedApp.id)}
-                  disabled={processingId === selectedApp.id}
-                  className="flex-1 min-w-[140px] py-4 text-xs font-black uppercase tracking-widest bg-destructive text-destructive-foreground rounded-2xl hover:opacity-90 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-destructive/20"
-                >
-                  <X className="w-4 h-4" />
-                  Reject
-                </button>
-              )}
-              <button 
-                onClick={() => handleDelete(selectedApp.id)}
-                disabled={processingId === selectedApp.id}
-                className="flex-1 min-w-[140px] py-4 text-xs font-black uppercase tracking-widest text-muted-foreground hover:bg-secondary hover:text-foreground rounded-2xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 border border-border hover:border-primary/50"
-              >
-                <Trash2 className="w-4 h-4" />
-                Delete
-              </button>
-            </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Rejection Modal */}
-      {showRejectModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-6 bg-background/80 backdrop-blur-sm">
-          <div className="w-full max-w-md bg-card border border-border rounded-3xl p-8 shadow-2xl">
-            <h2 className="text-2xl font-black tracking-tight mb-4 text-foreground">Reject Application</h2>
-            <p className="text-muted-foreground text-sm mb-6 font-medium">Please provide a clear reason for rejecting this application. This will be shown to the applicant.</p>
-            
-            <textarea 
-              value={rejectionReason}
-              onChange={(e) => setRejectionReason(e.target.value)}
-              placeholder="e.g. Portfolio does not meet our quality standards..."
-              className="w-full bg-background border border-border rounded-2xl px-4 py-4 text-sm outline-none focus:ring-2 focus:ring-destructive/20 transition-all resize-none mb-6 text-foreground placeholder:text-muted-foreground shadow-sm focus:border-destructive"
-              rows={4}
+      <AnimatePresence>
+        {showRejectModal && (
+          <div className="fixed inset-0 z-110 flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowRejectModal(null)}
+              className="absolute inset-0 bg-black/90 backdrop-blur-xl"
             />
-            
-            <div className="flex gap-3">
-              <button 
-                onClick={() => setShowRejectModal(null)}
-                className="flex-1 py-4 text-xs font-black uppercase tracking-widest text-muted-foreground hover:bg-secondary hover:text-foreground rounded-2xl transition-all border border-border"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={() => handleReject(showRejectModal)}
-                disabled={!rejectionReason || processingId === showRejectModal}
-                className="flex-1 py-4 text-xs font-black uppercase tracking-widest bg-destructive text-destructive-foreground rounded-2xl hover:opacity-90 transition-all disabled:opacity-50 active:scale-95 shadow-lg shadow-destructive/20"
-              >
-                Confirm Reject
-              </button>
-            </div>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-surface border border-white/10 rounded-6xl p-12 shadow-2xl"
+            >
+              <div className="space-y-8">
+                <div className="space-y-4">
+                   <h2 className="text-3xl font-bold tracking-tighter text-foreground">Reject Access.</h2>
+                   <p className="text-sm text-muted-foreground font-medium leading-relaxed">Please provide an operational reason for rejecting this application. This context will be shared with the applicant.</p>
+                </div>
+                
+                <textarea 
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="e.g. Portfolio metrics do not align with platform growth strategy..."
+                  className="w-full bg-muted/20 border border-border/40 rounded-2xl px-6 py-6 text-sm font-bold outline-none focus:border-destructive transition-all resize-none text-foreground placeholder:text-muted-foreground/20 shadow-inner"
+                  rows={4}
+                />
+                
+                <div className="flex gap-4">
+                  <Button 
+                    onClick={() => setShowRejectModal(null)}
+                    variant="ghost"
+                    className="flex-1 h-14 rounded-2xl font-bold uppercase tracking-widest text-[11px]"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={() => handleReject(showRejectModal)}
+                    disabled={!rejectionReason || processingId === showRejectModal}
+                    className="flex-1 h-14 bg-destructive text-white rounded-2xl font-bold uppercase tracking-widest text-[11px] shadow-2xl shadow-destructive/20"
+                  >
+                    Confirm Rejection
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
-      {/* Custom Confirmation Modal */}
+        )}
+      </AnimatePresence>
+
       <ConfirmModal 
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
         onConfirm={confirmModal.type === "approve" ? executeApprove : executeDelete}
-        title={confirmModal.type === "approve" ? "Approve Creator" : "Delete Application"}
+        title={confirmModal.type === "approve" ? "Authorize Creator" : "Erase Application"}
         message={
           confirmModal.type === "approve" 
-            ? "Are you sure you want to approve this creator? This will grant them creator privileges and access to the Creator Studio immediately."
-            : "Are you sure you want to delete this creator application? This action cannot be undone."
+            ? "Are you sure you want to authorize this creator? This will grant immediate access to the Creator Workspace and publishing protocols."
+            : "Are you sure you want to erase this application registry? This action is IRREVERSIBLE."
         }
-        confirmText={confirmModal.type === "approve" ? "Approve Now" : "Delete Permanently"}
+        confirmText={confirmModal.type === "approve" ? "Authorize Now" : "Erase Permanently"}
         variant={confirmModal.type === "delete" ? "danger" : "info"}
         isLoading={processingId === confirmModal.applicationId}
       />

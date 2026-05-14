@@ -17,12 +17,7 @@ const firebaseConfig = {
 };
 
 // Singleton pattern for Firebase App
-let app: FirebaseApp;
-if (!getApps().length) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApp();
-}
+const app: FirebaseApp = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 // Singleton pattern for Auth
 const auth: Auth = getAuth(app);
@@ -30,20 +25,19 @@ const auth: Auth = getAuth(app);
 // Singleton pattern for Firestore with SSR and HMR safety
 let db: Firestore;
 
-// Shared settings for stability across environments
 const firestoreSettings = {
-  experimentalForceLongPolling: true, // Bypass gRPC issues in both browser and build environments
+  experimentalForceLongPolling: true,
   cacheSizeBytes: CACHE_SIZE_UNLIMITED,
 };
 
 try {
   db = initializeFirestore(app, firestoreSettings);
-  if (typeof window !== "undefined") {
-    console.log("✅ Firestore initialized with Long Polling");
-  }
 } catch (e) {
-  // If already initialized (common in Next.js dev), get the existing instance
   db = getFirestore(app);
+}
+
+if (typeof window !== "undefined") {
+  console.log("✅ Firestore initialized with Long Polling");
 }
 
 export { app, auth, db };

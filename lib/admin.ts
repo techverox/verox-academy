@@ -69,3 +69,34 @@ export const subscribeToRecentEnrollments = (callback: (enrollments: any[]) => v
     }
   );
 };
+/**
+ * Fetches and groups revenue data for the admin chart.
+ */
+export const getAdminRevenueAnalytics = async () => {
+  const paymentsRef = collection(db, "payments");
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  
+  const q = query(
+    paymentsRef,
+    where("status", "==", "captured"),
+    where("createdAt", ">=", Timestamp.fromDate(thirtyDaysAgo))
+  );
+  
+  const snapshot = await getDocs(q);
+  const dailyRevenue: Record<string, number> = {};
+  
+  snapshot.docs.forEach(doc => {
+    const data = doc.data();
+    const date = data.createdAt.toDate();
+    const day = date.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit' });
+    dailyRevenue[day] = (dailyRevenue[day] || 0) + (data.amount || 0) / 100;
+  });
+
+  return Object.entries(dailyRevenue)
+    .map(([name, revenue]) => ({ name, revenue }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+};
+
+// Add Timestamp to imports
+import { Timestamp, where } from "firebase/firestore";

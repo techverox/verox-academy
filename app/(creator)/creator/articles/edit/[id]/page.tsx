@@ -43,7 +43,7 @@ export default function EditArticlePage({ params }: PageProps) {
   if (!article) {
     return (
       <div className="text-center py-20">
-        <h1 className="text-2xl font-black mb-4">Article Not Found</h1>
+        <h1 className="text-2xl font-bold mb-4">Article Not Found</h1>
         <p className="text-zinc-500">The article you are trying to edit does not exist.</p>
       </div>
     );

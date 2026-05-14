@@ -27,7 +27,7 @@ export default function ArticleCard({ article }: ArticleCardProps) {
       viewport={{ once: true }}
       className="group flex flex-col h-full glass border-zinc-800/50 hover:border-primary/30 transition-all duration-300 rounded-3xl overflow-hidden"
     >
-      <Link href={`/blog/${article.slug}`} className="relative aspect-[16/9] overflow-hidden">
+      <Link href={`/blog/${article.slug}`} className="relative aspect-video overflow-hidden">
         <Image
           src={article.coverImage || "https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800&h=450&fit=crop"}
           alt={article.title}
@@ -75,7 +75,7 @@ export default function ArticleCard({ article }: ArticleCardProps) {
             </div>
             <span className="text-xs font-bold text-zinc-300">{article.authorName}</span>
           </div>
-          <Link href={`/blog/${article.slug}`} className="flex items-center gap-1.5 text-xs font-black uppercase tracking-widest text-primary group-hover:gap-2.5 transition-all">
+          <Link href={`/blog/${article.slug}`} className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-primary group-hover:gap-2.5 transition-all">
             Read More
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>

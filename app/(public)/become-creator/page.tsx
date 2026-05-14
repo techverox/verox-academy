@@ -5,7 +5,12 @@ import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
 import { submitCreatorApplication, getCreatorApplicationStatus } from "@/lib/firestore";
 import { CreatorApplication } from "@/types/firestore";
-import { CheckCircle2, AlertCircle, Rocket, Users, Target, ShieldCheck, Camera, Send, Video, Briefcase, Globe } from "lucide-react";
+import { CheckCircle2, AlertCircle, Rocket, Users, Target, ShieldCheck, Camera, Send, Video, Briefcase, Globe, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
+import { SectionWrapper } from "@/components/layout/SectionWrapper";
+import { ContentContainer } from "@/components/layout/ContentContainer";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function BecomeCreatorPage() {
   const { user, profile, loading, isCreator } = useAuth();
@@ -40,7 +45,6 @@ export default function BecomeCreatorPage() {
         email: user.email || "",
       }));
 
-      // Check if already applied
       const checkStatus = async () => {
         const app = await getCreatorApplicationStatus(user.uid);
         setExistingApp(app);
@@ -76,49 +80,49 @@ export default function BecomeCreatorPage() {
     }
   };
 
-  if (loading) return <div className="min-h-screen bg-black" />;
-
+  if (loading) return <div className="min-h-screen bg-background" />;
   if (isCreator) return null;
 
   if (existingApp) {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
-        <div className="max-w-md w-full bg-zinc-900/50 border border-zinc-800 rounded-3xl p-8 text-center space-y-6 backdrop-blur-xl">
-          <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+        <div className="max-w-md w-full bg-surface border border-border/60 rounded-5xl p-10 text-center space-y-8 shadow-xl shadow-black/5 dark:shadow-none">
+          <div className="mx-auto w-20 h-20 rounded-3xl bg-blue-50 flex items-center justify-center">
             {existingApp.status === "pending" ? (
-              <Rocket className="w-8 h-8 text-primary animate-pulse" />
+              <Rocket className="w-10 h-10 text-blue-600 animate-pulse" />
             ) : existingApp.status === "approved" ? (
-              <CheckCircle2 className="w-8 h-8 text-green-500" />
+              <CheckCircle2 className="w-10 h-10 text-emerald-500" />
             ) : (
-              <AlertCircle className="w-8 h-8 text-red-500" />
+              <AlertCircle className="w-10 h-10 text-rose-500" />
             )}
           </div>
-          <div className="space-y-2">
-            <h1 className="text-2xl font-black tracking-tight">
+          <div className="space-y-3">
+            <h1 className="text-3xl font-bold tracking-tight">
               {existingApp.status === "pending" ? "Application Pending" : 
                existingApp.status === "approved" ? "Application Approved!" : 
                "Application Rejected"}
             </h1>
-            <p className="text-zinc-400 text-sm leading-relaxed">
+            <p className="text-muted-foreground text-sm leading-relaxed">
               {existingApp.status === "pending" ? "Your application is being reviewed by our team. We'll get back to you soon via email." : 
                existingApp.status === "approved" ? "Welcome to the creator community! You can now access your creator dashboard." : 
                `Unfortunately, your application was not approved. Reason: ${existingApp.rejectionReason || "Not specified."}`}
             </p>
           </div>
           {existingApp.status === "approved" && (
-            <button 
+            <Button 
               onClick={() => router.push("/creator")}
-              className="w-full py-4 bg-white text-black font-black rounded-2xl hover:scale-[1.02] transition-transform active:scale-95"
+              className="w-full h-14 bg-linear-to-r from-blue-600 to-cyan-500 text-white font-semibold rounded-2xl shadow-lg shadow-blue-500/20"
             >
               GO TO CREATOR DASHBOARD
-            </button>
+            </Button>
           )}
-          <button 
-            onClick={() => router.push("/dashboard")}
-            className="w-full py-4 bg-zinc-800 text-white font-bold rounded-2xl hover:bg-zinc-700 transition-colors"
+          <Button 
+            variant="outline"
+            onClick={() => router.push("/")}
+            className="w-full h-14 rounded-2xl font-semibold border-border/60"
           >
             Back to Home
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -126,152 +130,141 @@ export default function BecomeCreatorPage() {
 
   if (status === "success") {
     return (
-      <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
-        <div className="max-w-md w-full bg-zinc-900/50 border border-zinc-800 rounded-3xl p-12 text-center space-y-6 backdrop-blur-xl">
-          <div className="mx-auto w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center">
-            <CheckCircle2 className="w-10 h-10 text-green-500" />
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
+        <div className="max-w-md w-full bg-surface border border-border/60 rounded-5xl p-12 text-center space-y-8 shadow-xl shadow-black/5 dark:shadow-none">
+          <div className="mx-auto w-24 h-24 rounded-3xl bg-emerald-50 flex items-center justify-center">
+            <CheckCircle2 className="w-12 h-12 text-emerald-500" />
           </div>
-          <div className="space-y-2">
-            <h1 className="text-3xl font-black tracking-tight">Application Sent!</h1>
-            <p className="text-zinc-400 text-lg">
+          <div className="space-y-3">
+            <h1 className="text-3xl font-bold tracking-tight">Application Sent!</h1>
+            <p className="text-muted-foreground text-base leading-relaxed">
               We've received your request. Our team will review your profile and get back to you within 48 hours.
             </p>
           </div>
-          <button 
+          <Button 
             onClick={() => router.push("/dashboard")}
-            className="w-full py-4 bg-white text-black font-black rounded-2xl hover:scale-[1.02] transition-transform active:scale-95"
+            className="w-full h-14 bg-linear-to-r from-blue-600 to-cyan-500 text-white font-semibold rounded-2xl shadow-lg shadow-blue-500/20"
           >
             BACK TO DASHBOARD
-          </button>
+          </Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white selection:bg-primary selection:text-black">
+    <div className="min-h-screen bg-background pb-32">
       {/* Hero Section */}
-      <div className="relative pt-24 pb-12 overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primary/20 blur-[120px] rounded-full opacity-20 pointer-events-none" />
+      <SectionWrapper className="relative pt-24 pb-16 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.06),transparent_70%)] pointer-events-none" />
         
-        <div className="container mx-auto px-6 relative">
-          <div className="max-w-3xl">
-            <span className="inline-block px-4 py-2 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-black uppercase tracking-widest text-primary mb-6">
-              CREATOR ECONOMY ENGINE
-            </span>
-            <h1 className="text-6xl md:text-7xl font-black tracking-tighter leading-[0.9] mb-8">
-              SHARE YOUR <span className="text-primary">EXPERTISE.</span><br />
-              BUILD YOUR <span className="text-zinc-500 text-outline">EMPIRE.</span>
+        <ContentContainer>
+          <div className="max-w-4xl text-center mx-auto">
+            <Badge variant="outline" className="h-8 px-5 rounded-full border-blue-200 bg-blue-50 text-blue-600 text-[10px] font-bold uppercase tracking-[0.2em] mb-8">
+              Creator Economy
+            </Badge>
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter leading-[0.9] mb-8">
+              Share your <span className="text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-cyan-500">expertise.</span><br />
+              Build your legacy.
             </h1>
-            <p className="text-xl text-zinc-400 leading-relaxed max-w-2xl mb-12">
-              Join the next generation of elite tech educators. Verox Academy provides the platform, tools, and audience you need to transform your knowledge into a scalable business.
+            <p className="text-lg md:text-xl text-muted-foreground leading-relaxed max-w-3xl mx-auto mb-12">
+              Join the next generation of digital masters. Verox Academy provides the platform, tools, and audience you need to transform your knowledge into a scalable business.
             </p>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0">
-                  <Users className="w-6 h-6 text-primary" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-left max-w-4xl mx-auto">
+              {/* Stats Cards */}
+              {[
+                { icon: Users, title: "Elite Audience", desc: "Reach thousands of motivated students globally." },
+                { icon: Target, title: "80% Revenue", desc: "Industry-leading revenue split for creators." },
+                { icon: ShieldCheck, title: "Smart CMS", desc: "Advanced tools to manage and scale your courses." }
+              ].map((item, i) => (
+                <div key={i} className="flex items-start gap-4 p-6 rounded-3xl bg-surface border border-border/50 shadow-sm">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0">
+                    <item.icon className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-foreground mb-1">{item.title}</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-bold mb-1">Elite Audience</h3>
-                  <p className="text-sm text-zinc-500">Reach thousands of motivated tech students.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0">
-                  <Target className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-bold mb-1">80% Revenue</h3>
-                  <p className="text-sm text-zinc-500">Industry-leading revenue split for creators.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-6 h-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-bold mb-1">Smart CMS</h3>
-                  <p className="text-sm text-zinc-500">Advanced tools to manage and scale your courses.</p>
-                </div>
-              </div>
+              ))}
             </div>
           </div>
-        </div>
-      </div>
+        </ContentContainer>
+      </SectionWrapper>
 
       {/* Form Section */}
-      <div className="container mx-auto px-6 pb-24">
-        <div className="max-w-4xl">
-          <form onSubmit={handleSubmit} className="bg-zinc-900/50 border border-zinc-800 rounded-[2rem] p-8 md:p-12 backdrop-blur-xl space-y-12">
+      <ContentContainer className="pb-24">
+        <div className="max-w-4xl mx-auto">
+          <form onSubmit={handleSubmit} className="bg-surface border border-border/60 rounded-5xl p-8 md:p-16 shadow-2xl shadow-black/3 dark:shadow-none space-y-16">
             
             {/* Personal Info */}
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black font-black text-sm">01</div>
-                <h2 className="text-2xl font-black tracking-tight">Personal Details</h2>
+                <div className="w-10 h-10 rounded-2xl bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-blue-600/20">01</div>
+                <h2 className="text-2xl font-bold tracking-tight">Personal Details</h2>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-zinc-500">Full Name</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Full Name</label>
                   <input 
                     type="text" 
                     required
                     value={formData.fullName}
                     onChange={(e) => setFormData({...formData, fullName: e.target.value})}
                     placeholder="John Doe"
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className="w-full bg-muted/30 border border-border/60 rounded-2xl px-6 py-4 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm font-medium text-foreground"
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-zinc-500">Professional Email</label>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Professional Email</label>
                   <input 
                     type="email" 
                     required
                     value={formData.email}
                     onChange={(e) => setFormData({...formData, email: e.target.value})}
                     placeholder="john@example.com"
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className="w-full bg-muted/30 border border-border/60 rounded-2xl px-6 py-4 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm font-medium text-foreground"
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-widest text-zinc-500">Professional Bio</label>
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Professional Bio</label>
                 <textarea 
                   required
                   value={formData.bio}
                   onChange={(e) => setFormData({...formData, bio: e.target.value})}
                   rows={4}
                   placeholder="Tell us about your background and achievements..."
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all resize-none"
+                  className="w-full bg-muted/30 border border-border/60 rounded-2xl px-6 py-4 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all resize-none text-sm font-medium leading-relaxed text-foreground"
                 />
               </div>
             </div>
 
             {/* Expertise */}
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black font-black text-sm">02</div>
-                <h2 className="text-2xl font-black tracking-tight">Expertise & Content</h2>
+                <div className="w-10 h-10 rounded-2xl bg-cyan-500 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-cyan-500/20">02</div>
+                <h2 className="text-2xl font-bold tracking-tight">Expertise & Content</h2>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-zinc-500">Primary Expertise</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Primary Expertise</label>
                   <input 
                     type="text" 
                     required
                     value={formData.expertise}
                     onChange={(e) => setFormData({...formData, expertise: e.target.value})}
                     placeholder="e.g. Next.js, Cloud Architecture"
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className="w-full bg-muted/30 border border-border/60 rounded-2xl px-6 py-4 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm font-medium text-foreground"
                   />
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-black uppercase tracking-widest text-zinc-500">Content Category</label>
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Content Category</label>
                   <select 
                     value={formData.category}
                     onChange={(e) => setFormData({...formData, category: e.target.value})}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all appearance-none"
+                    className="w-full bg-muted/30 border border-border/60 rounded-2xl px-6 py-4 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all appearance-none text-sm font-medium text-foreground"
                   >
                     <option value="technology">Technology</option>
                     <option value="design">Design</option>
@@ -281,79 +274,79 @@ export default function BecomeCreatorPage() {
                   </select>
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-widest text-zinc-500">Sample Course Idea</label>
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Sample Course Idea</label>
                 <input 
                   type="text" 
                   required
                   value={formData.sampleCourseIdea}
                   onChange={(e) => setFormData({...formData, sampleCourseIdea: e.target.value})}
                   placeholder="e.g. Masterclass: Building Multi-tenant SaaS"
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                  className="w-full bg-muted/30 border border-border/60 rounded-2xl px-6 py-4 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm font-medium"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-black uppercase tracking-widest text-zinc-500">Why do you want to join Verox?</label>
+              <div className="space-y-3">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Why do you want to join Verox?</label>
                 <textarea 
                   required
                   value={formData.whyJoin}
                   onChange={(e) => setFormData({...formData, whyJoin: e.target.value})}
                   rows={3}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all resize-none"
+                  className="w-full bg-muted/30 border border-border/60 rounded-2xl px-6 py-4 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all resize-none text-sm font-medium leading-relaxed text-foreground"
                 />
               </div>
             </div>
 
             {/* Social & Portfolio */}
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div className="flex items-center gap-4">
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black font-black text-sm">03</div>
-                <h2 className="text-2xl font-black tracking-tight">Presence & Proof</h2>
+                <div className="w-10 h-10 rounded-2xl bg-indigo-500 flex items-center justify-center text-white font-bold text-sm shadow-lg shadow-indigo-500/20">03</div>
+                <h2 className="text-2xl font-bold tracking-tight">Presence & Proof</h2>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Send className="w-4 h-4 text-zinc-500" />
-                    <label className="text-xs font-black uppercase tracking-widest text-zinc-500">Twitter URL</label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 ml-1">
+                    <Send className="w-3.5 h-3.5 text-muted-foreground/60" />
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Twitter URL</label>
                   </div>
                   <input 
                     type="url" 
                     value={formData.socialLinks.twitter}
                     onChange={(e) => setFormData({...formData, socialLinks: {...formData.socialLinks, twitter: e.target.value}})}
                     placeholder="https://twitter.com/..."
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className="w-full bg-muted/30 border border-border/60 rounded-2xl px-6 py-4 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm font-medium text-foreground"
                   />
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Briefcase className="w-4 h-4 text-zinc-500" />
-                    <label className="text-xs font-black uppercase tracking-widest text-zinc-500">LinkedIn URL</label>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 ml-1">
+                    <Briefcase className="w-3.5 h-3.5 text-muted-foreground/60" />
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">LinkedIn URL</label>
                   </div>
                   <input 
                     type="url" 
                     value={formData.socialLinks.linkedin}
                     onChange={(e) => setFormData({...formData, socialLinks: {...formData.socialLinks, linkedin: e.target.value}})}
                     placeholder="https://linkedin.com/in/..."
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className="w-full bg-muted/30 border border-border/60 rounded-2xl px-6 py-4 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm font-medium text-foreground"
                   />
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Video className="w-4 h-4 text-zinc-500" />
-                    <label className="text-xs font-black uppercase tracking-widest text-zinc-500">YouTube URL</label>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 ml-1">
+                    <Video className="w-3.5 h-3.5 text-muted-foreground/60" />
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">YouTube URL</label>
                   </div>
                   <input 
                     type="url" 
                     value={formData.socialLinks.youtube}
                     onChange={(e) => setFormData({...formData, socialLinks: {...formData.socialLinks, youtube: e.target.value}})}
                     placeholder="https://youtube.com/..."
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className="w-full bg-muted/30 border border-border/60 rounded-2xl px-6 py-4 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm font-medium text-foreground"
                   />
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Globe className="w-4 h-4 text-zinc-500" />
-                    <label className="text-xs font-black uppercase tracking-widest text-zinc-500">Portfolio/Website</label>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 ml-1">
+                    <Globe className="w-3.5 h-3.5 text-muted-foreground/60" />
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Portfolio/Website</label>
                   </div>
                   <input 
                     type="url" 
@@ -361,28 +354,28 @@ export default function BecomeCreatorPage() {
                     value={formData.portfolioUrl}
                     onChange={(e) => setFormData({...formData, portfolioUrl: e.target.value})}
                     placeholder="https://yourwebsite.com"
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-4 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+                    className="w-full bg-muted/30 border border-border/60 rounded-2xl px-6 py-4 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none transition-all text-sm font-medium text-foreground"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="pt-6">
+            <div className="pt-10">
               {status === "error" && (
-                <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-500 text-sm font-bold">
+                <div className="mb-8 p-5 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 text-sm font-semibold">
                   <AlertCircle className="w-5 h-5" />
                   {errorMessage}
                 </div>
               )}
               
-              <button 
+              <Button 
                 type="submit"
                 disabled={status === "loading"}
-                className="w-full py-6 bg-primary text-black font-black rounded-2xl text-lg hover:scale-[1.01] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-[0_0_40px_-10px_rgba(var(--primary-rgb),0.5)]"
+                className="w-full h-20 bg-linear-to-r from-blue-600 to-cyan-500 text-white font-bold rounded-2xl text-lg hover:scale-[1.01] transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-2xl shadow-blue-600/30 border-none"
               >
                 {status === "loading" ? (
                   <>
-                    <div className="w-6 h-6 border-4 border-black/20 border-t-black rounded-full animate-spin" />
+                    <div className="w-6 h-6 border-4 border-white/20 border-t-white rounded-full animate-spin" />
                     SUBMITTING...
                   </>
                 ) : (
@@ -391,11 +384,11 @@ export default function BecomeCreatorPage() {
                     <Rocket className="w-6 h-6" />
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </form>
         </div>
-      </div>
+      </ContentContainer>
     </div>
   );
 }

@@ -21,6 +21,16 @@ export interface User {
   photoURL: string | null;
   role: "student" | "creator" | "admin";
   verified: boolean;
+  onboardingCompleted?: boolean; // For creators to track initialization flow
+  bio?: string;
+  website?: string;
+  twitter?: string;
+  linkedin?: string;
+  github?: string;
+  payoutMethod?: {
+    upi?: string;
+    bankAccount?: string;
+  };
   createdAt: FirestoreTimestamp;
   lastLogin: FirestoreTimestamp;
 }

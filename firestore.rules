@@ -50,8 +50,11 @@ service cloud.firestore {
 
     // USERS
     match /users/{userId} {
-      // Public profiles
-      allow read: if true;
+      // Allow read if it's your own profile, if you're an admin, 
+      // or if the target is a creator (for public portfolio/course display)
+      allow read: if isOwner(userId) || isAdmin() || 
+                     (resource.data.role == 'creator');
+      
       // Users can create/update their own profile
       allow create, update: if isOwner(userId);
       // Only admins can delete users
@@ -76,10 +79,11 @@ service cloud.firestore {
     match /lessons/{lessonId} {
       allow read: if isAdmin() || 
                      (isAuthenticated() && 
-                      resource.data.courseId != null && 
-                      (isEnrolledInCourse(request.auth.uid, resource.data.courseId) ||
-                       isCourseOwner(resource.data.courseId))) ||
-                     (resource.data.isPreviewFree == true);
+                      (resource == null || 
+                       (resource.data.courseId != null && 
+                        (isEnrolledInCourse(request.auth.uid, resource.data.courseId) ||
+                         isCourseOwner(resource.data.courseId))))) ||
+                     (resource != null && resource.data.isPreviewFree == true);
       allow create: if isAdmin() || (isCreator() && request.resource.data.courseId != null && get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.creatorId == request.auth.uid);
       allow update, delete: if isAdmin() || (isCreator() && resource.data.courseId != null && get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.creatorId == request.auth.uid);
     }
@@ -167,16 +171,52 @@ service cloud.firestore {
     match /resources/{resourceId} {
       allow read: if isAdmin() || 
                      (isAuthenticated() && 
-                      (isEnrolledInCourse(request.auth.uid, resource.data.courseId) ||
-                       isCourseOwner(resource.data.courseId)));
-      allow create: if isAdmin() || (isCreator() && get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.creatorId == request.auth.uid);
-      allow update, delete: if isAdmin() || (isCreator() && get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.creatorId == request.auth.uid);
+                      (resource == null || 
+                       (resource.data.courseId != null && 
+                        (isEnrolledInCourse(request.auth.uid, resource.data.courseId) ||
+                         isCourseOwner(resource.data.courseId)))));
+      allow create: if isAdmin() || (isCreator() && request.resource.data.courseId != null && get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.creatorId == request.auth.uid);
+      allow update, delete: if isAdmin() || (isCreator() && resource.data.courseId != null && get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.creatorId == request.auth.uid);
     }
+
+    // QUIZZES
+    match /quizzes/{quizId} {
+      allow read: if isAdmin() || 
+                     (isAuthenticated() && 
+                      (resource == null || 
+                       (resource.data.courseId != null && 
+                        (isEnrolledInCourse(request.auth.uid, resource.data.courseId) ||
+                         isCourseOwner(resource.data.courseId)))));
+      allow create: if isAdmin() || (isCreator() && request.resource.data.courseId != null && get(/databases/$(database)/documents/courses/$(request.resource.data.courseId)).data.creatorId == request.auth.uid);
+      allow update, delete: if isAdmin() || (isCreator() && resource.data.courseId != null && get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.creatorId == request.auth.uid);
+    }
+
+    // QUIZ ATTEMPTS
+    match /quizAttempts/{attemptId} {
+      allow read: if isAdmin() || (isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || isCourseOwner(resource.data.courseId)));
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // REVIEWS
+    match /reviews/{reviewId} {
+      allow read: if true; // Public can see reviews
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
     // ARTICLES (BLOG)
     match /articles/{articleId} {
-      allow read: if (resource.data.published == true) || isAdmin() || (isCreator() && resource.data.authorId == request.auth.uid);
+      allow read: if (resource == null || resource.data.published == true) || isAdmin() || (isCreator() && resource.data.authorId == request.auth.uid);
       allow create: if isAdmin() || isCreator();
       allow update, delete: if isAdmin() || (isCreator() && resource.data.authorId == request.auth.uid);
+    }
+
+    // SYSTEM CONFIGURATION
+    match /systemConfig/{docId} {
+      allow read: if true; // Public can read platform settings (Maintenance, Announcements)
+      allow write: if isAdmin();
     }
   }
 }
