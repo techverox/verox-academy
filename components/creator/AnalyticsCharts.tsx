@@ -42,7 +42,7 @@ export default function AnalyticsCharts({ data, title, type, color = "#7C3AED" }
       )}
 
       <div className="h-[300px] w-full min-h-[300px] relative">
-        <ResponsiveContainer width="100%" height="100%" debounce={1}>
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={1}>
           {type === "area" ? (
             <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <defs>

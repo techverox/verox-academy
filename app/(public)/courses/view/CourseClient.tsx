@@ -133,7 +133,24 @@ function CourseViewContent() {
     );
   }
 
-  if (!course) return null;
+  if (!course) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6 text-center">
+        <div className="h-20 w-20 rounded-full bg-red-500/10 flex items-center justify-center mb-6">
+          <HelpCircle className="w-10 h-10 text-red-500" />
+        </div>
+        <h1 className="text-3xl font-bold tracking-tighter text-foreground mb-4">Course Not Found</h1>
+        <p className="text-muted-foreground max-w-md mb-8">
+          The course you are looking for may have been removed, unpublished, or the link is invalid.
+        </p>
+        <Link href="/courses">
+          <Button variant="primary" className="h-12 px-8 rounded-xl font-bold uppercase tracking-widest text-[10px]">
+            Explore All Courses
+          </Button>
+        </Link>
+      </div>
+    );
+  }
 
   const outcomes = [
     "Master the core architecture of the industry.",

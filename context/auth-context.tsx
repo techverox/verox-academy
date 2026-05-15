@@ -17,6 +17,7 @@ import { User as FirestoreUser, AppUser } from "@/types/firestore";
 
 interface AuthContextType {
   user: AppUser | null;
+  profile: FirestoreUser | null;
   /** Raw Firebase User for internal use if needed */
   firebaseUser: FirebaseUser | null;
   loading: boolean;
@@ -27,6 +28,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  profile: null,
   firebaseUser: null,
   loading: true,
   isAdmin: false,
@@ -154,7 +156,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, firebaseUser, loading, isAdmin, isCreator, refreshClaims }}>
+    <AuthContext.Provider value={{ user, profile, firebaseUser, loading, isAdmin, isCreator, refreshClaims }}>
       {children}
     </AuthContext.Provider>
   );

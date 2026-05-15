@@ -272,10 +272,19 @@ function LearnViewerContent() {
           <div className="lg:col-span-8 space-y-2">
             <VideoPlayer 
               mediaId={activeLesson.wistiaMediaId || ""} 
+              video={activeLesson.video}
               title={activeLesson.title}
+              courseId={courseId}
+              lessonId={activeLesson.id}
               startAt={lastProgress?.watchedSeconds}
               onComplete={handleMarkComplete}
               onTimeUpdate={updateProgress}
+              onNextLesson={() => {
+                const currentIndex = lessons.findIndex(l => l.id === activeLesson.id);
+                if (currentIndex !== -1 && currentIndex < lessons.length - 1) {
+                  switchLesson(lessons[currentIndex + 1].id);
+                }
+              }}
             />
             
             <VideoHeader 

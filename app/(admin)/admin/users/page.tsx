@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminUsersPage() {
-  const { user: currentUser, isAdmin, loading: authLoading } = useAuth();
+  const { user: currentUser, firebaseUser, isAdmin, loading: authLoading } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -76,7 +76,7 @@ export default function AdminUsersPage() {
     setConfirmModal(prev => ({ ...prev, isOpen: false }));
     setProcessingId(userId);
     try {
-      const idToken = await currentUser?.getIdToken();
+      const idToken = await firebaseUser?.getIdToken();
       const res = await fetch("/api/admin/users/update-role", {
         method: "POST",
         headers: { 
@@ -113,7 +113,7 @@ export default function AdminUsersPage() {
     
     setProcessingId(userId);
     try {
-      const idToken = await currentUser?.getIdToken();
+      const idToken = await firebaseUser?.getIdToken();
       const res = await fetch("/api/admin/users/delete", {
         method: "POST",
         headers: { 

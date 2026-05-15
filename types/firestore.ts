@@ -90,6 +90,8 @@ export interface Review {
   createdAt: FirestoreTimestamp;
 }
 
+import { VideoSource } from "./video";
+
 // ─── Lesson ─────────────────────────────────────────────────────────────────
 export interface Lesson {
   id: string;
@@ -97,7 +99,8 @@ export interface Lesson {
   title: string;
   description: string;
   videoUrl: string;
-  wistiaMediaId?: string;
+  wistiaMediaId?: string; // Legacy support
+  video?: VideoSource; // New system
   duration: string; // e.g., "10:30"
   order: number;
   published: boolean;

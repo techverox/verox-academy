@@ -16,6 +16,10 @@ import {
   getQuizByLessonId
 } from "@/lib/firestore";
 import { Lesson, Course, Resource, Quiz, Question } from "@/types/firestore";
+import { extractVideoId } from "@/lib/video/extract-video-id";
+import { youtubeService } from "@/lib/video/youtube-service";
+import { wistiaService } from "@/lib/video/wistia-service";
+import { VideoSource } from "@/types/video";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
@@ -75,6 +79,8 @@ function CurriculumManager({ basePath }: { basePath: string }) {
     description: "",
     duration: "10:00",
     wistiaMediaId: "",
+    videoUrl: "",
+    video: null as VideoSource | null,
     isPreviewFree: false,
     published: false,
     notes: "",
@@ -126,18 +132,49 @@ function CurriculumManager({ basePath }: { basePath: string }) {
     fetchData();
   }, [fetchData]);
 
-  // Automatic Duration Trigger
-  useEffect(() => {
-    if (formData.wistiaMediaId && !editingLesson && formData.duration === "10:00") {
-      const timer = setTimeout(() => fetchWistiaDuration(formData.wistiaMediaId), 800);
-      return () => clearTimeout(timer);
+  const handleUrlChange = async (url: string) => {
+    setFormData(prev => ({ ...prev, videoUrl: url }));
+    
+    const extracted = extractVideoId(url);
+    if (!extracted) return;
+
+    setFetchingDuration(true);
+    try {
+      let metadata: Partial<VideoSource> = {};
+      
+      if (extracted.provider === 'youtube') {
+        metadata = await youtubeService.getVideoMetadata(extracted.videoId);
+      } else if (extracted.provider === 'wistia') {
+        metadata = await wistiaService.getVideoMetadata(extracted.videoId);
+      }
+
+      const videoSource: VideoSource = {
+        provider: extracted.provider,
+        videoId: extracted.videoId,
+      };
+      
+      if (metadata.thumbnail) videoSource.thumbnail = metadata.thumbnail;
+      if (metadata.duration) videoSource.duration = metadata.duration;
+
+      setFormData(prev => ({ 
+        ...prev, 
+        video: videoSource,
+        // Legacy support: keep wistiaMediaId if it's Wistia
+        wistiaMediaId: extracted.provider === 'wistia' ? extracted.videoId : prev.wistiaMediaId
+      }));
+
+      // If duration was fetched, update it
+      if (metadata.duration) {
+        const mins = Math.floor(metadata.duration / 60);
+        const secs = Math.round(metadata.duration % 60);
+        setFormData(prev => ({ ...prev, duration: `${mins}:${secs.toString().padStart(2, '0')}` }));
+      }
+    } catch (err) {
+      console.error("Failed to fetch video metadata:", err);
+    } finally {
+      setFetchingDuration(false);
     }
-    // For existing lessons, only trigger if Wistia ID changed from original
-    if (editingLesson && formData.wistiaMediaId && formData.wistiaMediaId !== editingLesson.wistiaMediaId) {
-      const timer = setTimeout(() => fetchWistiaDuration(formData.wistiaMediaId), 800);
-      return () => clearTimeout(timer);
-    }
-  }, [formData.wistiaMediaId, fetchWistiaDuration, editingLesson]);
+  };
 
   const onDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
@@ -173,6 +210,8 @@ function CurriculumManager({ basePath }: { basePath: string }) {
       description: "",
       duration: "10:00",
       wistiaMediaId: "",
+      videoUrl: "",
+      video: null,
       isPreviewFree: false,
       published: false,
       notes: "",
@@ -187,6 +226,12 @@ function CurriculumManager({ basePath }: { basePath: string }) {
       description: lesson.description || "",
       duration: lesson.duration,
       wistiaMediaId: lesson.wistiaMediaId || "",
+      videoUrl: lesson.video ? (
+        lesson.video.provider === 'youtube' 
+          ? `https://youtube.com/watch?v=${lesson.video.videoId}`
+          : `https://fast.wistia.com/embed/iframe/${lesson.video.videoId}`
+      ) : (lesson.wistiaMediaId ? `https://fast.wistia.com/embed/iframe/${lesson.wistiaMediaId}` : ""),
+      video: lesson.video || (lesson.wistiaMediaId ? { provider: 'wistia', videoId: lesson.wistiaMediaId } : null),
       isPreviewFree: lesson.isPreviewFree || false,
       published: lesson.published || false,
       notes: lesson.notes || "",
@@ -231,11 +276,14 @@ function CurriculumManager({ basePath }: { basePath: string }) {
     
     setSavingStatus("saving");
     try {
+      // Sanitize data before sending to Firestore to avoid 'undefined' field errors
+      const sanitizedData = JSON.parse(JSON.stringify(formData));
+
       if (editingLesson) {
-        await adminUpdateLesson(editingLesson.id, formData);
+        await adminUpdateLesson(editingLesson.id, sanitizedData);
       } else {
         await adminCreateLesson({
-          ...formData,
+          ...sanitizedData,
           courseId,
           order: lessons.length + 1
         });
@@ -458,7 +506,10 @@ function CurriculumManager({ basePath }: { basePath: string }) {
                           <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest flex items-center gap-3">
                             <span className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> {lesson.duration}</span>
                             <span className="h-1 w-1 rounded-full bg-border" />
-                            <span className="flex items-center gap-1.5"><Video className="w-3 h-3" /> {lesson.wistiaMediaId || "No Video"}</span>
+                            <span className="flex items-center gap-1.5">
+                              {lesson.video?.provider === 'youtube' ? <Globe className="w-3 h-3 text-red-500" /> : <Video className="w-3 h-3 text-blue-500" />}
+                              {lesson.video?.provider || (lesson.wistiaMediaId ? "wistia" : "No Video")}
+                            </span>
                           </p>
                         </div>
                       </div>
@@ -607,17 +658,22 @@ function CurriculumManager({ basePath }: { basePath: string }) {
                           </div>
                         </div>
                         <div className="space-y-4">
-                          <label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground/60 ml-2">Wistia Media ID</label>
+                          <label className="text-[10px] font-bold uppercase tracking-[0.4em] text-muted-foreground/60 ml-2">Video URL (YouTube or Wistia)</label>
                           <div className="relative">
-                            <Video className="absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40" />
+                            <Globe className={cn("absolute left-6 top-1/2 -translate-y-1/2 w-4 h-4", formData.video?.provider === 'youtube' ? "text-red-500" : "text-muted-foreground/40")} />
                             <input
                               type="text"
                               required
-                              placeholder="e.g. abc123xyz"
+                              placeholder="Paste YouTube or Wistia URL"
                               className="w-full rounded-2xl border border-border/40 bg-muted/20 pl-14 pr-8 py-5 font-bold text-foreground outline-none focus:border-accent/40 transition-all"
-                              value={formData.wistiaMediaId}
-                              onChange={e => setFormData({ ...formData, wistiaMediaId: extractWistiaId(e.target.value) })}
+                              value={formData.videoUrl}
+                              onChange={e => handleUrlChange(e.target.value)}
                             />
+                            {formData.video && (
+                              <div className="absolute right-6 top-1/2 -translate-y-1/2 px-2 py-1 rounded bg-muted text-[8px] font-bold uppercase tracking-widest text-accent border border-border/40">
+                                {formData.video.provider} Detected
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

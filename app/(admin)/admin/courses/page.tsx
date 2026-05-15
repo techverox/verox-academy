@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAllCoursesAdmin, toggleCoursePublish } from "@/lib/firestore";
-import { Course } from "@/types/firestore";
 import Link from "next/link";
 import Image from "next/image";
 import { 
@@ -20,13 +18,17 @@ import {
   Sparkles,
   Eye,
   Globe,
-  User,
+  User as UserIcon,
   Clock,
   ArrowRight,
-  ShieldCheck
+  ShieldCheck,
+  UserPlus
 } from "lucide-react";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
+import { AssignCreatorModal } from "@/components/admin/AssignCreatorModal";
 import { useAuth } from "@/context/auth-context";
+import { adminAssignCourseToCreator, getAllCoursesAdmin, toggleCoursePublish } from "@/lib/firestore";
+import { Course, User } from "@/types/firestore";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -34,7 +36,7 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminCoursesPage() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, firebaseUser } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,6 +48,12 @@ export default function AdminCoursesPage() {
     courseId: string;
     title: string;
   }>({ isOpen: false, courseId: "", title: "" });
+
+  const [assignModal, setAssignModal] = useState<{
+    isOpen: boolean;
+    courseId: string;
+    currentName: string | null;
+  }>({ isOpen: false, courseId: "", currentName: null });
 
   useEffect(() => {
     fetchCourses();
@@ -85,13 +93,31 @@ export default function AdminCoursesPage() {
     });
   };
 
+  const executeAssign = async (creator: User) => {
+    try {
+      await adminAssignCourseToCreator(assignModal.courseId, creator);
+      setCourses(prev => prev.map(c => 
+        c.id === assignModal.courseId ? { 
+          ...c, 
+          creatorId: creator.uid, 
+          creatorName: creator.name || "Elite Instructor",
+          creatorPhoto: creator.photoURL || null,
+          creatorEmail: creator.email || null 
+        } : c
+      ));
+    } catch (error) {
+      console.error("Assignment failed:", error);
+      alert("Error assigning creator.");
+    }
+  };
+
   const executeDelete = async () => {
     const { courseId } = confirmModal;
     setConfirmModal(prev => ({ ...prev, isOpen: false }));
     setProcessingId(courseId);
 
     try {
-      const idToken = await currentUser?.getIdToken();
+      const idToken = await firebaseUser?.getIdToken();
       const res = await fetch("/api/courses/delete", {
         method: "POST",
         headers: { 
@@ -260,6 +286,15 @@ export default function AdminCoursesPage() {
                     </td>
                     <td className="px-10 py-8 text-right">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
+                        <Button 
+                          variant="secondary" 
+                          size="icon" 
+                          onClick={() => setAssignModal({ isOpen: true, courseId: course.id, currentName: course.creatorName || null })}
+                          className="h-10 w-10 rounded-xl" 
+                          title="Assign Creator"
+                        >
+                           <UserPlus className="w-4.5 h-4.5 text-blue-600" />
+                        </Button>
                         <Link href={`/admin/courses/curriculum?id=${course.id}`}>
                            <Button variant="secondary" size="icon" className="h-10 w-10 rounded-xl" title="Manage Curriculum">
                               <Layout className="w-4.5 h-4.5" />
@@ -301,6 +336,13 @@ export default function AdminCoursesPage() {
           </table>
         </div>
       </Card>
+
+      <AssignCreatorModal 
+        isOpen={assignModal.isOpen}
+        onClose={() => setAssignModal(prev => ({ ...prev, isOpen: false }))}
+        onAssign={executeAssign}
+        currentCreatorName={assignModal.currentName}
+      />
 
       <ConfirmModal 
         isOpen={confirmModal.isOpen}

@@ -33,13 +33,14 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminCreatorsPage() {
-  const { user, isAdmin, loading: authLoading, refreshClaims } = useAuth();
+  const { user, firebaseUser, isAdmin, loading: authLoading, refreshClaims } = useAuth();
   const [applications, setApplications] = useState<CreatorApplication[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState<string | null>(null);
   const [selectedApp, setSelectedApp] = useState<CreatorApplication | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Modal State
   const [confirmModal, setConfirmModal] = useState<{
@@ -50,7 +51,7 @@ export default function AdminCreatorsPage() {
 
   const fetchApplications = async () => {
     try {
-      const idToken = await user?.getIdToken();
+      const idToken = await firebaseUser?.getIdToken();
       const res = await fetch("/api/admin/creators", {
         headers: { Authorization: `Bearer ${idToken}` },
       });
@@ -86,7 +87,7 @@ export default function AdminCreatorsPage() {
     
     setProcessingId(applicationId);
     try {
-      const idToken = await user?.getIdToken();
+      const idToken = await firebaseUser?.getIdToken();
       const res = await fetch("/api/admin/creators/approve", {
         method: "POST",
         headers: { 
@@ -116,7 +117,7 @@ export default function AdminCreatorsPage() {
     
     setProcessingId(applicationId);
     try {
-      const idToken = await user?.getIdToken();
+      const idToken = await firebaseUser?.getIdToken();
       const res = await fetch("/api/admin/creators/reject", {
         method: "POST",
         headers: { 
@@ -157,7 +158,7 @@ export default function AdminCreatorsPage() {
     
     setProcessingId(applicationId);
     try {
-      const idToken = await user?.getIdToken();
+      const idToken = await firebaseUser?.getIdToken();
       const res = await fetch("/api/admin/creators/delete", {
         method: "POST",
         headers: { 
@@ -209,6 +210,12 @@ export default function AdminCreatorsPage() {
     );
   }
 
+  const filteredApplications = applications.filter(app => 
+    app.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    app.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    app.category.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="space-y-16 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Moderation Header */}
@@ -232,6 +239,8 @@ export default function AdminCreatorsPage() {
             <input 
               type="text" 
               placeholder="Search applications..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="h-14 pl-14 pr-8 bg-surface border border-border/40 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-accent/5 transition-all text-foreground placeholder:text-muted-foreground/40 w-full md:w-80"
             />
           </div>
@@ -292,17 +301,17 @@ export default function AdminCreatorsPage() {
                     </div>
                   </td>
                 </tr>
-              ) : applications.length === 0 ? (
+              ) : filteredApplications.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="px-10 py-32 text-center text-muted-foreground/40 font-medium">
                     <div className="flex flex-col items-center justify-center gap-4">
                        <Search className="w-12 h-12 opacity-10" />
-                       <p className="text-[10px] font-bold uppercase tracking-widest">No applications detected in registry.</p>
+                       <p className="text-[10px] font-bold uppercase tracking-widest">No matching applications in registry.</p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                applications.map((app, i) => (
+                filteredApplications.map((app, i) => (
                   <motion.tr 
                     key={app.id}
                     initial={{ opacity: 0, x: -10 }}

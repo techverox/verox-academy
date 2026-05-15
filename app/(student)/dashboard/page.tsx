@@ -133,7 +133,12 @@ export default function DashboardPage() {
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(37,99,235,0.1),transparent_50%)]" />
               
               <div className="relative w-full lg:w-[420px] aspect-video rounded-4xl overflow-hidden border border-white/10 shadow-2xl shrink-0 group-hover:scale-[1.02] transition-transform duration-700 ring-1 ring-white/5">
-                <Image src={lastCourse.thumbnail || "/placeholder-course.png"} alt={lastCourse.courseTitle} fill className="object-cover opacity-60 group-hover:opacity-80 transition-opacity" />
+                <Image 
+                  src={typeof lastCourse.thumbnail === 'string' && lastCourse.thumbnail ? lastCourse.thumbnail : "/placeholder-course.png"} 
+                  alt={lastCourse.courseTitle} 
+                  fill 
+                  className="object-cover opacity-60 group-hover:opacity-80 transition-opacity" 
+                />
                 <div className="absolute inset-0 flex items-center justify-center">
                    <div className="h-14 w-14 md:h-20 md:w-20 rounded-full bg-blue-600/20 backdrop-blur-xl border border-blue-600/40 flex items-center justify-center text-white transition-all group-hover:scale-110 group-hover:bg-blue-600 shadow-2xl shadow-blue-600/40">
                       <Play className="w-6 h-6 md:w-8 md:h-8 fill-current ml-1" />
@@ -197,7 +202,12 @@ export default function DashboardPage() {
                     <Card className="p-5 md:p-6 rounded-4xl border border-border/40 bg-surface hover:border-blue-500/40 transition-all group shadow-sm">
                        <div className="space-y-5 md:space-y-6">
                           <div className="relative aspect-video rounded-3xl overflow-hidden border border-border/40">
-                             <Image src={course.thumbnail || "/placeholder-course.png"} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
+                             <Image 
+                                src={typeof course.thumbnail === 'string' && course.thumbnail ? course.thumbnail : "/placeholder-course.png"} 
+                                alt="" 
+                                fill 
+                                className="object-cover group-hover:scale-105 transition-transform duration-700" 
+                             />
                              <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
                              <div className="absolute top-3 right-3 md:top-4 md:right-4 h-8 w-8 md:h-10 md:w-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white border border-white/20 group-hover:bg-blue-600 group-hover:border-blue-600 transition-all">
                                 <Play className="w-3.5 h-3.5 md:w-4 md:h-4 fill-current" />
@@ -239,7 +249,12 @@ export default function DashboardPage() {
                   {completedCourses.slice(0, 4).map((course: any) => (
                     <Card key={course.courseId} className="p-4 md:p-6 rounded-4xl border border-emerald-500/20 bg-emerald-500/2 flex items-center gap-4 md:gap-6 group hover:border-emerald-500/40 transition-all shadow-sm">
                        <div className="relative h-16 w-20 md:h-20 md:w-28 rounded-2xl overflow-hidden shrink-0 border border-emerald-500/10">
-                          <Image src={course.thumbnail} alt="" fill className="object-cover grayscale group-hover:grayscale-0 transition-all" />
+                          <Image 
+                            src={typeof course.thumbnail === 'string' && course.thumbnail ? course.thumbnail : "/placeholder-course.png"} 
+                            alt="" 
+                            fill 
+                            className="object-cover grayscale group-hover:grayscale-0 transition-all" 
+                          />
                           <div className="absolute inset-0 flex items-center justify-center bg-emerald-500/10">
                              <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-white drop-shadow-lg" />
                           </div>

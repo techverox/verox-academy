@@ -49,6 +49,33 @@ import {
   writeBatch
 } from "firebase/firestore";
 import { db } from "./firebase";
+import { FieldValue } from "firebase/firestore";
+
+/**
+ * Safely removes undefined values from an object before sending to Firestore.
+ * Preserves Firestore FieldValue and other complex objects.
+ */
+export const sanitizeData = (data: any): any => {
+  if (data === null || typeof data !== 'object') return data;
+  
+  // If it's a Firestore-specific object, return as-is
+  // We check for the presence of common Firestore object methods/properties
+  if (data instanceof FieldValue || (data.seconds !== undefined && data.nanoseconds !== undefined)) {
+    return data;
+  }
+
+  if (Array.isArray(data)) {
+    return data.map(item => sanitizeData(item));
+  }
+
+  const sanitized: any = {};
+  for (const key in data) {
+    if (data[key] !== undefined) {
+      sanitized[key] = sanitizeData(data[key]);
+    }
+  }
+  return sanitized;
+};
 
 // ─── Live Subscriptions ──────────────────────────────────────────────────────
 
@@ -60,6 +87,95 @@ export const subscribeToCreatorStats = (creatorId: string, callback: (stats: Cre
 export const subscribeToRecentUsers = (limitCount: number = 20, callback: (users: User[]) => void) => {
   const q = query(collection(db, "users"), orderBy("createdAt", "desc"), limit(limitCount));
   return onSnapshot(q, (snap) => callback(snap.docs.map(doc => ({ uid: doc.id, ...doc.data() } as User))));
+};
+
+/**
+ * Real-time subscription for creator's recent activity (enrollments/payments).
+ * Simplified query to avoid composite index requirements.
+ */
+export const subscribeToCreatorRecentEnrollments = (creatorId: string, callback: (data: any[]) => void) => {
+  // Use only creatorId filter to avoid index issues
+  const q = query(
+    collection(db, "payments"), 
+    where("creatorId", "==", creatorId), 
+    limit(50) 
+  );
+
+  return onSnapshot(q, (snap) => {
+    const data = snap.docs
+      .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as any))
+      .filter(p => p.status === "captured") // Filter in memory
+      .sort((a, b) => { // Sort in memory
+        const dateA = a.createdAt?.seconds || 0;
+        const dateB = b.createdAt?.seconds || 0;
+        return dateB - dateA;
+      })
+      .slice(0, 10) // Limit in memory
+      .map(payment => ({
+        id: payment.id,
+        studentName: payment.metadata?.userEmail?.split("@")[0] || "Student",
+        courseTitle: payment.metadata?.courseTitle || "Course",
+        price: payment.amount,
+        createdAt: payment.createdAt
+      }));
+    callback(data);
+  });
+};
+
+/**
+ * Fetches aggregated analytics for the creator dashboard.
+ * Simplified query to avoid composite index requirements.
+ */
+export const getCreatorAnalytics = async (creatorId: string) => {
+  try {
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+    const fourteenDaysAgoSeconds = Math.floor(fourteenDaysAgo.getTime() / 1000);
+    
+    // Only filter by creatorId
+    const q = query(
+      collection(db, "payments"),
+      where("creatorId", "==", creatorId),
+      limit(500)
+    );
+
+    const snap = await getDocs(q);
+    const revenueMap: Record<string, number> = {};
+    const enrollmentMap: Record<string, number> = {};
+
+    // Initialize map with last 14 days
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const label = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      revenueMap[label] = 0;
+      enrollmentMap[label] = 0;
+    }
+
+    snap.docs.forEach(docSnap => {
+      const data = docSnap.data();
+      if (data.status !== "captured") return;
+      
+      const createdAt = data.createdAt as Timestamp;
+      if (createdAt.seconds < fourteenDaysAgoSeconds) return;
+
+      const date = createdAt.toDate();
+      const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      
+      if (revenueMap[label] !== undefined) {
+        revenueMap[label] += (data.creatorRevenue || 0) / 100;
+        enrollmentMap[label] += 1;
+      }
+    });
+
+    return {
+      revenueData: Object.entries(revenueMap).map(([label, value]) => ({ label, value })),
+      enrollmentData: Object.entries(enrollmentMap).map(([label, value]) => ({ label, value })),
+    };
+  } catch (error) {
+    console.error("[FIRESTORE] Failed to fetch creator analytics:", error);
+    return { revenueData: [], enrollmentData: [] };
+  }
 };
 
 // ─── User Operations ────────────────────────────────────────────────────────
@@ -87,6 +203,14 @@ export const createUserIfNotExists = async (userData: Partial<User>) => {
 export const getUserProfile = async (uid: string): Promise<User | null> => {
   const snap = await getDoc(doc(db, "users", uid));
   return snap.exists() ? (snap.data() as User) : null;
+};
+
+/**
+ * Updates a user's profile data.
+ */
+export const updateUserProfile = async (uid: string, data: Partial<User>) => {
+  const userRef = doc(db, "users", uid);
+  await updateDoc(userRef, data);
 };
 
 // ─── Course & Lesson Queries ────────────────────────────────────────────────
@@ -428,4 +552,343 @@ export const getResourcesByLessonId = async (lessonId: string, courseId?: string
   const snap = await getDocs(q);
   return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Resource))
     .sort((a, b) => ((b.createdAt as any)?.seconds || 0) - ((a.createdAt as any)?.seconds || 0));
+};
+
+// ─── Lesson Management (CMS) ────────────────────────────────────────────────
+
+/**
+ * CMS: Creates a new lesson for a course.
+ */
+export const adminCreateLesson = async (lessonData: Partial<Lesson>): Promise<string> => {
+  const lessonsRef = collection(db, "lessons");
+  const newLessonRef = doc(lessonsRef);
+  
+  const newLesson: Omit<Lesson, "id"> = {
+    courseId: lessonData.courseId || "",
+    title: lessonData.title || "New Lesson",
+    description: lessonData.description || "",
+    videoUrl: lessonData.videoUrl || "",
+    wistiaMediaId: lessonData.wistiaMediaId || "",
+    video: lessonData.video || undefined,
+    duration: lessonData.duration || "0:00",
+    order: Number(lessonData.order) || 0,
+    published: lessonData.published || false,
+    isPreviewFree: lessonData.isPreviewFree || false,
+    createdAt: serverTimestamp(),
+  };
+
+  await setDoc(newLessonRef, sanitizeData(newLesson));
+  return newLessonRef.id;
+};
+
+export const adminUpdateLesson = async (lessonId: string, lessonData: Partial<Lesson>) => {
+  const lessonRef = doc(db, "lessons", lessonId);
+  
+  await updateDoc(lessonRef, sanitizeData({
+    ...lessonData,
+    updatedAt: serverTimestamp(),
+  }));
+};
+
+/**
+ * CMS: Deletes a lesson.
+ */
+export const adminDeleteLesson = async (lessonId: string) => {
+  const lessonRef = doc(db, "lessons", lessonId);
+  await deleteDoc(lessonRef);
+};
+
+/**
+ * CMS: Updates the order of multiple lessons.
+ */
+export const adminUpdateLessonOrder = async (lessons: { id: string; order: number }[]) => {
+  const batch = writeBatch(db);
+  
+  lessons.forEach((l) => {
+    const lessonRef = doc(db, "lessons", l.id);
+    batch.update(lessonRef, { order: l.order });
+  });
+  
+  await batch.commit();
+};
+
+/**
+ * CMS: Duplicates a lesson.
+ */
+export const adminDuplicateLesson = async (lesson: Lesson) => {
+  const lessonsRef = collection(db, "lessons");
+  const newLessonRef = doc(lessonsRef);
+  
+  const { id, ...lessonData } = lesson;
+  const newLesson = {
+    ...lessonData,
+    title: `${lesson.title} (Copy)`,
+    createdAt: serverTimestamp(),
+    order: lesson.order + 0.1, 
+  };
+  
+  await setDoc(newLessonRef, newLesson);
+  return newLessonRef.id;
+};
+
+// ─── Lesson Resources (CMS) ─────────────────────────────────────────────────
+
+/**
+ * Adds a new resource to a lesson.
+ */
+export const adminAddResource = async (resourceData: Omit<Resource, "id" | "createdAt">): Promise<string> => {
+  const resourcesRef = collection(db, "resources");
+  const newResourceRef = doc(resourcesRef);
+  
+  const newResource: Omit<Resource, "id"> = {
+    ...resourceData,
+    createdAt: serverTimestamp(),
+  };
+
+  await setDoc(newResourceRef, newResource);
+  return newResourceRef.id;
+};
+
+/**
+ * Deletes a resource.
+ */
+export const adminDeleteResource = async (resourceId: string): Promise<void> => {
+  const resourceRef = doc(db, "resources", resourceId);
+  await deleteDoc(resourceRef);
+};
+
+/**
+ * Updates lesson notes.
+ */
+export const adminUpdateLessonNotes = async (lessonId: string, notes: string): Promise<void> => {
+  const lessonRef = doc(db, "lessons", lessonId);
+  await updateDoc(lessonRef, { notes });
+};
+
+// ─── Quiz & Assessment (CMS) ────────────────────────────────────────────────
+
+/**
+ * Fetches the quiz for a specific lesson.
+ */
+export const getQuizByLessonId = async (lessonId: string, courseId?: string): Promise<Quiz | null> => {
+  const quizzesRef = collection(db, "quizzes");
+  const q = query(quizzesRef, where("lessonId", "==", lessonId));
+  const querySnapshot = await getDocs(q);
+  
+  if (!querySnapshot.empty) {
+    return { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as Quiz;
+  }
+  return null;
+};
+
+/**
+ * Records a quiz attempt.
+ */
+export const saveQuizAttempt = async (attempt: Omit<QuizAttempt, "id" | "attemptedAt">): Promise<string> => {
+  const attemptsRef = collection(db, "quizAttempts");
+  const newAttemptRef = doc(attemptsRef);
+  
+  const newAttempt: Omit<QuizAttempt, "id"> = {
+    ...attempt,
+    attemptedAt: serverTimestamp(),
+  };
+
+  await setDoc(newAttemptRef, newAttempt);
+  return newAttemptRef.id;
+};
+
+/**
+ * Fetches the latest attempt for a quiz by a user.
+ */
+export const getLatestQuizAttempt = async (userId: string, quizId: string): Promise<QuizAttempt | null> => {
+  const attemptsRef = collection(db, "quizAttempts");
+  const q = query(
+    attemptsRef, 
+    where("userId", "==", userId), 
+    where("quizId", "==", quizId), 
+    orderBy("attemptedAt", "desc"), 
+    limit(1)
+  );
+  const querySnapshot = await getDocs(q);
+  
+  if (!querySnapshot.empty) {
+    return { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as QuizAttempt;
+  }
+  return null;
+};
+
+/**
+ * CMS: Creates or updates a quiz for a lesson.
+ */
+export const adminSaveQuiz = async (quizData: Omit<Quiz, "id" | "createdAt">): Promise<void> => {
+  const quizRef = doc(db, "quizzes", quizData.lessonId); 
+  await setDoc(quizRef, sanitizeData({
+    ...quizData,
+    createdAt: serverTimestamp(),
+  }), { merge: true });
+};
+
+/**
+ * Adds a creator reply to a review.
+ */
+export const addReviewReply = async (reviewId: string, replyText: string) => {
+  const reviewRef = doc(db, "reviews", reviewId);
+  await updateDoc(reviewRef, {
+    creatorReply: {
+      text: replyText,
+      repliedAt: serverTimestamp()
+    }
+  });
+};
+
+// ─── Payouts & Admin Stats ──────────────────────────────────────────────────
+
+/**
+ * CMS: Fetches global stats for the admin dashboard.
+ */
+export const getAdminGlobalStats = async () => {
+  const [coursesSnap, enrollmentsSnap, lessonsSnap, usersSnap] = await Promise.all([
+    getDocs(collection(db, "courses")),
+    getDocs(collection(db, "enrollments")),
+    getDocs(collection(db, "lessons")),
+    getDocs(collection(db, "users")),
+  ]);
+
+  return {
+    totalCourses: coursesSnap.size,
+    totalEnrollments: enrollmentsSnap.size,
+    totalLessons: lessonsSnap.size,
+    totalUsers: usersSnap.size,
+  };
+};
+
+/**
+ * CMS: Creates a new course.
+ */
+export const adminCreateCourse = async (courseData: Partial<Course>, creator?: any): Promise<string> => {
+  console.log("[FIRESTORE] Creating course with data:", courseData, "Creator profile:", creator);
+  const coursesRef = collection(db, "courses");
+  const newCourseRef = doc(coursesRef);
+  
+  const newCourse: Omit<Course, "id"> = {
+    title: courseData.title || "Untitled Course",
+    description: courseData.description || "",
+    thumbnail: courseData.thumbnail || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3",
+    price: Number(courseData.price) || 0,
+    instructorId: creator?.uid || creator?.id || courseData.instructorId || courseData.creatorId || "admin",
+    creatorId: creator?.uid || creator?.id || courseData.creatorId || "admin",
+    creatorName: creator?.name || courseData.creatorName || "Elite Instructor",
+    creatorPhoto: creator?.photoURL || creator?.photoUrl || courseData.creatorPhoto || null,
+    creatorEmail: creator?.email || courseData.creatorEmail || null,
+    lessonCount: 0,
+    published: courseData.published || false,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  await setDoc(newCourseRef, newCourse);
+  return newCourseRef.id;
+};
+
+/**
+ * CMS: Updates a course.
+ */
+export const adminUpdateCourse = async (courseId: string, courseData: Partial<Course>) => {
+  const courseRef = doc(db, "courses", courseId);
+  await updateDoc(courseRef, {
+    ...courseData,
+    price: Number(courseData.price) || 0,
+    updatedAt: serverTimestamp(),
+  });
+};
+
+/**
+ * CMS: Reassigns a course to a different creator.
+ * Useful for fixing "orphaned" courses or transferring ownership.
+ */
+export const adminAssignCourseToCreator = async (courseId: string, creator: User) => {
+  const courseRef = doc(db, "courses", courseId);
+  await updateDoc(courseRef, {
+    creatorId: creator.uid,
+    creatorName: creator.name || "Elite Instructor",
+    creatorPhoto: creator.photoURL || null,
+    creatorEmail: creator.email || null,
+    instructorId: creator.uid,
+    updatedAt: serverTimestamp(),
+  });
+};
+
+/**
+ * Fetches payout history for a creator.
+ */
+export const getPayoutHistory = async (creatorId: string): Promise<PayoutRequest[]> => {
+  const q = query(
+    collection(db, "payoutRequests"), 
+    where("creatorId", "==", creatorId), 
+    orderBy("requestedAt", "desc")
+  );
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as PayoutRequest));
+};
+
+/**
+ * Submits a new creator application.
+ */
+export const submitCreatorApplication = async (application: Omit<CreatorApplication, "id" | "status" | "createdAt">) => {
+  const applicationsRef = collection(db, "creatorApplications");
+  const newAppRef = doc(applicationsRef);
+  
+  const newApp: Omit<CreatorApplication, "id"> = {
+    ...application,
+    status: "pending",
+    createdAt: serverTimestamp(),
+  };
+
+  await setDoc(newAppRef, newApp);
+  return newAppRef.id;
+};
+
+/**
+ * Fetches the status of a user's creator application.
+ */
+export const getCreatorApplicationStatus = async (userId: string): Promise<CreatorApplication | null> => {
+  const applicationsRef = collection(db, "creatorApplications");
+  const q = query(applicationsRef, where("userId", "==", userId), orderBy("createdAt", "desc"), limit(1));
+  const querySnapshot = await getDocs(q);
+  
+  if (querySnapshot.empty) return null;
+  return { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as CreatorApplication;
+};
+
+/**
+ * Fetches aggregated stats for a creator.
+ */
+export const getCreatorStats = async (creatorId: string): Promise<CreatorStats | null> => {
+  const statsRef = doc(db, "creatorStats", creatorId);
+  const statsSnap = await getDoc(statsRef);
+  
+  if (statsSnap.exists()) {
+    return statsSnap.data() as CreatorStats;
+  }
+  
+  return null;
+};
+
+/**
+ * Submits a new payout request.
+ */
+export const requestPayout = async (creatorId: string, amount: number, paymentMethod: any) => {
+  const payoutsRef = collection(db, "payoutRequests");
+  const newPayoutRef = doc(payoutsRef);
+  
+  const newPayout: Omit<PayoutRequest, "id"> = {
+    creatorId,
+    amount,
+    status: "pending",
+    requestedAt: serverTimestamp() as any,
+    paymentMethod
+  };
+
+  await setDoc(newPayoutRef, newPayout);
+  return newPayoutRef.id;
 };

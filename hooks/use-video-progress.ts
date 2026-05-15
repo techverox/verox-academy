@@ -18,10 +18,15 @@ export function useVideoProgress(courseId: string | null, lessonId: string | und
     if (!user || !lessonId) return;
 
     setLoading(true);
-    getVideoProgress(user.uid, lessonId).then((progress) => {
-      setLastProgress(progress);
-      setLoading(false);
-    });
+    getVideoProgress(user.uid, lessonId)
+      .then((progress) => {
+        setLastProgress(progress);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch video progress:", error);
+        setLoading(false);
+      });
   }, [user, lessonId]);
 
   // Save progress logic

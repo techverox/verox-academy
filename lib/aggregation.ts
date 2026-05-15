@@ -172,41 +172,44 @@ export async function incrementCreatorStats(
  * Rebuild platform stats from scratch by scanning all collections.
  * This is an expensive operation and should only be run once during migration
  * or as a maintenance task.
- *
- * IMPORTANT: This performs full collection scans. Use only for initial setup.
  */
 export async function rebuildPlatformStats(): Promise<void> {
   const db = getAdminDb();
 
-  const [usersSnap, coursesSnap, enrollmentsSnap, lessonsSnap, paymentsSnap] =
-    await Promise.all([
-      db.collection("users").count().get(),
-      db.collection("courses").count().get(),
-      db.collection("enrollments").count().get(),
-      db.collection("lessons").count().get(),
-      db.collection("payments").count().get(),
-    ]);
+  try {
+    const [usersSnap, coursesSnap, enrollmentsSnap, lessonsSnap, paymentsSnap] =
+      await Promise.all([
+        db.collection("users").count().get(),
+        db.collection("courses").count().get(),
+        db.collection("enrollments").count().get(),
+        db.collection("lessons").count().get(),
+        db.collection("payments").count().get(),
+      ]);
 
-  // Calculate total revenue from payments
-  const paymentDocs = await db
-    .collection("payments")
-    .where("status", "==", "captured")
-    .get();
+    // Calculate total revenue from captured payments
+    const paymentDocs = await db
+      .collection("payments")
+      .where("status", "==", "captured")
+      .get();
 
-  let totalRevenue = 0;
-  paymentDocs.forEach((doc) => {
-    totalRevenue += doc.data().amount || 0;
-  });
+    let totalRevenue = 0;
+    paymentDocs.forEach((doc) => {
+      totalRevenue += doc.data().amount || 0;
+    });
 
-  await db.doc(PLATFORM_STATS_DOC).set({
-    totalUsers: usersSnap.data().count,
-    totalCourses: coursesSnap.data().count,
-    totalEnrollments: enrollmentsSnap.data().count,
-    totalLessons: lessonsSnap.data().count,
-    totalRevenue,
-    totalPayments: paymentsSnap.data().count,
-    lastUpdated: FieldValue.serverTimestamp(),
-  });
+    await db.doc(PLATFORM_STATS_DOC).set({
+      totalUsers: usersSnap.data().count || 0,
+      totalCourses: coursesSnap.data().count || 0,
+      totalEnrollments: enrollmentsSnap.data().count || 0,
+      totalLessons: lessonsSnap.data().count || 0,
+      totalRevenue: totalRevenue || 0,
+      totalPayments: paymentsSnap.data().count || 0,
+      lastUpdated: FieldValue.serverTimestamp(),
+    }, { merge: true });
 
-  console.log("[AGGREGATION] Platform stats rebuilt from scratch");
+    console.log("[AGGREGATION] Platform stats rebuilt successfully.");
+  } catch (error) {
+    console.error("[AGGREGATION] Failed to rebuild platform stats:", error);
+    throw error;
+  }
 }

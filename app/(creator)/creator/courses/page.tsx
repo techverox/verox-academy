@@ -32,7 +32,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 export default function CreatorCoursesPage() {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, firebaseUser } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -94,7 +94,7 @@ export default function CreatorCoursesPage() {
     setProcessingId(courseId);
 
     try {
-      const idToken = await currentUser?.getIdToken();
+      const idToken = await firebaseUser?.getIdToken();
       const res = await fetch("/api/courses/delete", {
         method: "POST",
         headers: { 

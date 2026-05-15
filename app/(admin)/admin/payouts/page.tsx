@@ -31,15 +31,16 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminPayoutsPage() {
-  const { user } = useAuth();
+  const { user, firebaseUser } = useAuth();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [selectedPayout, setSelectedPayout] = useState<any | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchRequests = async () => {
     try {
-      const idToken = await user?.getIdToken();
+      const idToken = await firebaseUser?.getIdToken();
       const res = await fetch("/api/admin/payouts", {
         headers: { Authorization: `Bearer ${idToken}` },
       });
@@ -61,7 +62,7 @@ export default function AdminPayoutsPage() {
 
     setProcessingId(requestId);
     try {
-      const idToken = await user?.getIdToken();
+      const idToken = await firebaseUser?.getIdToken();
       const res = await fetch("/api/admin/payouts/process", {
         method: "POST",
         headers: { 
@@ -107,6 +108,11 @@ export default function AdminPayoutsPage() {
     </div>
   );
 
+  const filteredRequests = requests.filter(req => 
+    req.creator?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    req.id.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="space-y-16 pb-32 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Financial Moderation Header */}
@@ -130,6 +136,8 @@ export default function AdminPayoutsPage() {
             <input 
               type="text" 
               placeholder="Search payout registry..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="h-14 pl-14 pr-8 bg-surface border border-border/40 rounded-2xl text-sm font-bold outline-none focus:ring-4 focus:ring-accent/5 transition-all text-foreground placeholder:text-muted-foreground/40 w-full md:w-80"
             />
           </div>
@@ -189,17 +197,17 @@ export default function AdminPayoutsPage() {
                     </div>
                   </td>
                 </tr>
-              ) : requests.length === 0 ? (
+              ) : filteredRequests.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-10 py-32 text-center text-muted-foreground/40 font-medium">
                     <div className="flex flex-col items-center justify-center gap-4">
                        <DollarSign className="w-12 h-12 opacity-10" />
-                       <p className="text-[10px] font-bold uppercase tracking-widest">No pending transactions detected.</p>
+                       <p className="text-[10px] font-bold uppercase tracking-widest">No transactions found matching search.</p>
                     </div>
                   </td>
                 </tr>
               ) : (
-                requests.map((req, i) => (
+                filteredRequests.map((req, i) => (
                   <motion.tr 
                     key={req.id}
                     initial={{ opacity: 0, x: -10 }}

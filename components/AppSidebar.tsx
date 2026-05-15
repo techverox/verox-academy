@@ -55,7 +55,7 @@ export function AppSidebar({ type, isCollapsed, onToggleCollapse }: SidebarProps
       { name: "Studio", href: "/creator/", icon: LayoutDashboard },
       { name: "My Courses", href: "/creator/courses/", icon: Layers },
       { name: "Earnings", href: "/creator/payouts/", icon: DollarSign },
-      { name: "Insights", href: "/creator/analytics/", icon: TrendingUp },
+      { name: "Insights", href: "/creator/analytics", icon: TrendingUp },
       { name: "Settings", href: "/creator/settings/", icon: Settings },
     ],
     student: [
